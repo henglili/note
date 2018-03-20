@@ -1,0 +1,319 @@
+* NumPy
+** Basics
+   NumPy's main object is the homogeneous multidimensional array.
+   In NumPy dimensions are called /axes/. The number of axes is /rank/
+
+   Numpy's array class is called *ndarray*. It is also known by the alias *array*.
+   The more important attributes of an *ndarray* object are:
+   *ndarray.ndim*: /rank/
+   *ndarray.shape*
+   *ndarray.size*: the total number of elements of the array. 
+   *ndarray.dtype*:an object describing the type of the elements in the array.
+   *ndarray.itemsize*: the size in bytes of each element of the array. 
+       For example, an array of elements of type float64 has itemsize 8 (=64/8). 
+       It is equivalent to *ndarray.dtype.itemsize*
+ 
+      #+begin_src ipython
+        import numpy as np
+
+        a = np.arange(15).reshape(3, 5)
+        print(a)
+        print('shape:', a.shape)
+        print('ndim:', a.ndim)
+        print('dtpye.name:', a.dtype.name)
+        print('itemsize:', a.itemsize)
+        print('size:', a.size)
+        print('type:', type(a))
+
+      #+end_src
+
+
+*** Array Creation
+    1. create an array from a reqular Python list or tuple using *np.array* function.
+      #+begin_src ipython
+        import numpy as np
+
+        a = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int16)
+        print(a)
+        print('dtpye:', a.dtype)
+
+       #+end_src
+    
+    2. NumPy offers serval functions to create arrays with inital placeholder content.
+       #+begin_src ipython
+         import numpy as np
+
+         print(np.zeros((3, 4)))
+         print(np.ones((2, 3, 4), dtype=np.int16))
+         print(np.empty((2, 3)))
+
+
+         print(np.arange(10, 30, 5))
+         print(np.linspace(0, 2, 9))
+       #+end_src
+
+       #+RESULTS:
+       : # Out[5]:
+       
+       See also:
+       array, zeros, zeros_like, ones, ones_like, empty, empty_like, arange, linspace, numpy.random.rand, numpy.random.randn, fromfunction, fromfile
+
+*** Printing Array
+    See *reshape*
+
+*** Basic Operations
+    elementwise, return a new one: +, -, *, /, **, sin, >, <, ==
+    matrix, return a new one: dot
+    act in place to modify an existing array: +=, *=
+
+    When operating with arrays of different types, the type of the resulting array corresponds to the more general or precise one
+
+    unary operations: sum, min, max
+    By default, these operaions apply to the array as though it were a list of numbers, regardless of its shape. 
+    However, by specifying the *axis* parameter you can apply an operation along the specified axis of an array.
+    #+begin_src ipython
+      import numpy as np
+
+      b = np.arange(12).reshape(3, 4)
+      print(b)
+      print(b.sum(axis=0))
+      print(b.sum(axis=1))
+      print(b.cumsum(axis=1))
+
+    #+end_src
+
+    #+RESULTS:
+    : # Out[6]:
+
+    
+*** Universal Functions
+    all, any, apply_along_axis, argmax, argmin, argsort, average, bincount, ceil, clip, conj, corrcoef, cov, cross, cumprod, cumsum, 
+    diff, dot, floor, inner, inv, lexsort, max, maximum, mean, median, min, minimum, nonzero, outer, prod, re, round, sort, std, sum,
+    trace, transpose, var, vdot, vectorize, where
+
+*** Indexing, Slicing and Iterating
+    The dots(...) represent as many colons as needed to produce a complete indexing tuple.
+    For example, if *x* is a rank 5 array(i.e., it has 5 axes), then
+    
+    *x[1,2,...]* is equivalent to *x[1,2,:,:,:]*
+    *x[...,3]* to *x[:,:,:,;,3]* and
+    *x[4,...,5,:]* tp *x[4,:,:,5,:]*
+
+    Iterating over multidimensional arrays is done with respect to the first axis.
+    However, if one wants to perform an operaion on each element in the array, one can use the *flat* attribute which is an iterator over all the elements of the array
+    #+begin_src ipython
+      import numpy as np
+
+      def f(x,y):
+          return 10*x+y
+
+      b= np.fromfunction(f,(5,4),dtype=int)
+
+      print(b)
+
+      for element in b.flat:
+          print(element)
+
+    #+end_src
+
+    See also:
+    Indexing, Indexing(reference)
+    *newaxis*: Each newaxis object in the selection tuple serves to expand the dimensions of the resulting selection by one unit-length dimension.
+               The added dimension is the position of the newaxis object in the selection tuple
+    *ndenumerate*: Return an iterator yielding pairs of array coordinates and values
+    *indices*: Return apairs of row indeces and column indices
+
+*** Shape Manipulation 
+    The shape of an array can be changed with various commands. Note that the following three commands all return a modified array, but do not change the original array.
+    *reval*: returns the array, flattened
+    *reshape*: returns the array with a modified shape
+    *T*: returns the array, transpose
+
+    The *reshape* function returns its argument with a modified shape, whereas the *ndarray,resize* method modified the array itself.
+    *resize*
+
+    If a dimension is given as -1 in a reshapping operation, the other dimensions are automatically calculated.
+
+*** Stacking together different arrays
+    *vstack*, *hstack*
+    *column_stack*: often work with *newaxis*. Parameter is a sequence of 1-D or 2-D arrays.
+    *concatenate*
+    For arrays of with more than two dimensions, *hstack* stacks along their second axes, *vstack* stacks along their firdt axes,
+    and *concatenate* allows for an optional arguments giving the number of the axis along which the concatenation should happen.
+
+*** Splitting one array into serveral smaller ones
+    *hsplit*, *vsplit*, *array_split*
+
+*** Copies and Views
+    **** No Copy at All
+    1. Simple assignments make no copy of array objects or of their data.
+    2. Python passes mutable objects as references, so function calls make no copy.
+
+    **** View or Shallow Copy
+    Use View: Different array objects can share the same data. The *view* method creates a new array object that looks at the same data.
+              view's shape has been changed, but original array's shape will not change.
+              view's data has been changed, original array's data also changed.
+              Slicing an array returns a view of array.
+
+    **** Deep Copy
+    The *copy* method makes a complete copy of the array and its data.
+
+*** Functions and Methods Overview
+
+*** Less Basic
+    broadcasting rules
+
+*** Fancy indexing and index tricks
+    NumPy offers more indexing facilities than regular Python sequences. arrays can be indexed by arrays of integers and arrays of booleans.
+    When the indexed array *a* is multidimensional, a single array of indices refers to the first dimension of *a*.
+    We can also give indexes for more than one dimension. The arrays of indices for each dimension must have the same shape.
+    Another common use of indexing with arrays is the search of the maximum value of time-dependent series: argmax function
+
+    You can also use indexing with arrays as a target to asign to
+    When the list of indices contains repetitions, the assignment is done serveral times, leaving behind the last value.
+    But, watch out if you want to use Python's *+=* construct, as it may not do what you expect. This is because Python requires "a+=1" to be equivalent to "a=a+1"
+
+**** TODO indexing with strings
+     See [[https://docs.scipy.org/doc/numpy-dev/user/basics.rec.html#structured-arrays][Structured arrays]]
+
+*** Linear Algebra
+**** Simple Array Operations
+     transpose, inv, eye, dot, trace, slove, eig
+
+** Tricks and Tips
+**** "Automatic" Reshaping
+     To change the dimensions of an array, you can omit one of the sizes which will then be deduced automatically (by use -1)
+   
+**** Vector Stacking 
+     vstack, hstack
+
+**** Histogram
+
+** NumPy basics
+*** Data types
+**** We recommend using dtype objects instead.
+     To convert the type of an array, use the *.astype()* method(preferred) or the type itself as a functions. 
+     Note that, we use the *python* float object as a dtype, NumPy knows that *int* refers to *np.int_*, bool means *np.bool_*, that *float* is *np.float_* and *complex* is *np.complex_*. 
+     The other data-types do not have Python equivalents.
+
+*** Array creation
+**** Introduction
+     There are 5 general mechanisms for creating arrays:
+     1. Conversion from other Python structures (e.g., lists, tuples)
+     2. Intinsic numpy array array creation objects (e.g., arange, ones, zeros, etc.)
+     3. Reading arrays from disk, either from standard or custom formats
+     4. Creating arrays from raw bytes through the use of strings or buffers
+     5. Use of special library functions (e.g., random)
+
+*** Importing data with genfromtxt
+    In a nutshell, genfromtxt runs two main loops. The first loop converts each line of the file in a sequence of strings. The second loop converts each string to the appropriate data type.
+    This mechanism is slower than a single loop, but gives more flexibility. In particular, genfromtxt is able to take missing data into account, when other faster and simpler functions like loadtxt cannot.
+
+**** Importing data with genfromtxt
+
+**** Define the input
+
+
+**** Splitting the lines into columns
+
+**** Skipping lines and choosing columns
+
+**** Choosing the data type
+***** a single type, such as *dtype=float*. Note that *dtype=float* is the default for genfromtxt.
+***** a sequence of types, such as *dtype=(int,float,float)*
+***** a comma-separated string, such as *dtype="i4,f8,|S3"*
+***** a dictionary with two keys 'name' and 'formats'
+***** a sequence of tuples (name, type), such as *dtype=[('A',int),('B',float)]*
+***** an existing numpy.dtype object
+***** the special value *None*. In that case, the type of the columns will be determined from the data itself(see below).
+      When *dtype=None*, the Type of each column is determined iteratively from its data. We start by checking whether a string can be convert to a boolean; then wether it can be
+      converted to an integer, then to a float, then to a complex and eventually to a string. This behavior may be changed by modifying the default mapper of the StringConverter class.
+
+**** Setting the name
+**** The defaultfmt argument
+**** Validating names
+**** Tweaking the conversion
+**** Using missing and filling values
+***** missing_values, filling_values, usemask
+**** Shortcut functions
+     In additon to genfromtxt, the numpy.lib.io module provides serveral convenience functions derived from genfromtxt. These functions work the same way as the original, but they have
+     different default values.
+
+     ndfromtxt: Always set *usemask=False*. The output is always a standard numpy.ndarray.
+     mafromtxt: Always set *usemask=True*. The output is always a MaskedArray.
+     recfromtxt: Return a standard numpy.recarray(if *usemask=False*) or a MaskedRecords array (if *usemask=True*). The default dtype is *dtype=None*, meaning that the types of each
+     column will be automatically determined.
+     recfromcsv: Like recfromtxt, but with a default *delimiter=","*
+*** Indexing
+**** Assignment vs referencing
+**** Single element indexing
+**** Other indexing options
+     Note that slices of arrays do not copy the internal array data but also produce new views of the original data.
+**** Index arrays
+     For all cases of index arrays, what is returned is a copy of the original data, not a view as one gets for slices.
+     Generally speaking, what is returned whent index arrays are used is an array with the same shape as the index array, but with the type and values of the array being indexed.
+**** Indexing Multi-dimensional arrays
+     If the index arrays do not have the same shape, there is a attempt tp broadcast them to the same shape. if they cannot be broadcast to the same shape, an exception is raised.
+**** Boolean or "mask" index arrays
+     Unlike in the case of interger index arrays, in the boolean case, the result is a 1-D array containing all the elemnts in the indexed array corresponding to all the true elements
+     in the boolean array.
+     The result will be multidimensional if y has more dimensions than b.
+**** Combining index arrays with slices
+     Index arrays may be combined with slices. In effect, the slice is convert to an index array.
+     Likewise, slicing can be combined with broadcasted boolean indices.
+**** Structural indexing tools
+     np.newaxis
+     This can be handy to combine two arrays in a way that otherwise would require explicitly reshaping operations.
+
+**** Assigning values to indexedd array
+     One can select a subset of an array to assign to using a single index, slice, and index and mask arrays.
+     Note that assignments may result in changes if assigning higher types to lower types(like floats to ints) or even exception.
+**** Dealing with variable numbers of indices within programs
+
+*** Broadcasting  
+    NumPy operations are usually done on pairs of arrays on an element-by-element basis.
+    NumPy's broadcasting rule relaxes this constraint when the arrays' shapes meet certain constraints. The simplest broadcasting example occurs when an array and a scalar value are
+    combined in an operation.
+    NumPy is smart enough to use the original scalar value without actually making copies, so that broadcasting operations are as memory and computationally efficient as possible.
+***** General Broadcasting Rules
+      When operating on two arrays, NumPy compares their shapes element-wise. It starts with the tailing dimensions, and works its way froward. Two dimensions are compatible when
+      1. they are equal, or 
+      2. one of them is 1
+      If these conditions  are not met, a *ValueError: frames are not aligned* exception is thrown, indicating that the arrays have incompatible shapes. The size of resulting array
+is the maximum size along each dimension of the input arrays.
+
+*** TODO Byte-swapping 
+*** Structed arrays
+    NumPy provides powerful capabilities to create arrays of structured datatype. These arrays permit one to manipulate the data by named fields.
+    Conveniently, one can access any field of the array by indexing using the string that names that field. And return a view.
+**** Defining Structured Arrays
+     One defines a structured array through the dtype object. This argument must be one of the following: 1) string, 2) tuple, 3) list, or 4) dictionary.
+***** String argument. In this case, the constructor expects a comma-separated list of type specifiers, optionally with extra shape information. The fields are given the default names 'f0', 'f1', 'f2' and so on. 
+      a) b1, i1, i2, i4, i8, u1, u2, u4, u8, f2, f4,f8, c8, c16, a<n>
+         (representing bytes, ints, unsigned ints, floats, complex and fixed length strings of specified byte lengths)
+      b) int8, ..., uint8, ..., float16, float32, float64, complex64, complex128
+         (this time with bit sizes)
+      Furthermore, each type specifier can be prefixed with a repetition number, or a shape.
+***** Tuple argument. 
+***** List argument: In this case the record structure is defined with a list of tuples. Each tuple has 2 or 3 elements specifying: 1) The name of the field (''is permitted), 2) the type of the field, and 3) the shape (optional).
+***** Dictionary argument: two different forms are permitted. The first consists of a dictionary with two required keys ('names' and 'formats'), each having an equal sized list of values. The format list contains any type/shape specifier allowed in other context. The names must be strings. There are two optional keys: 'offsets' and 'titles'. Each must be a correspondingly matching list to the requires two where offsets contain integer offsets for each field, and titles are objects containing metadata for each field (these do not have to be strings), where the value of None is permitted.
+**** Accessing and modifying field names
+     *x.dtype.name*
+**** Accessing field titles
+     *x.dtype.fields['x'][2]*
+**** Accessing multiple fields at once
+     using a list of field name. The fields are returned in the order they are asked for.
+**** Filling structed array
+     Structed arrays can be filled by field or row by row.
+**** Record Arrays
+     For convenience, numpy provides "record arrays" which allow one to access fields of stuctured arrays by attribute rather than by index. Record arrays are structured arrays wrapped using a subclass of ndarray, *numpy.recarray*, which allows field access by attribute on the array object, and record arrays also use a special datatype, *numpy.record*, which allows field access by attribute on the individual elements of the array.
+     The numpy.rec module provides a number of other convenience functions for creating record arrays, see [[https://docs.scipy.org/doc/numpy-dev/reference/routines.array-creation.html#routines-array-creation-rec][record array creation routines]].
+     A record array representation of a structured array can be obtained using the appropriate view.
+     For convenience, viewing an ndarray as type np.recarray will automatically convert to np.record datatype.
+     To get back to a plain ndarray both the dtype and type must be reset. 
+     Record array fields accessed by index or by attribute are returned as a record array if the field has a structured type but as a plain ndarray otherwise.
+*** TODO Subclassing ndarray
+    
+     
+** TODO NumPy Reference
+https://docs.scipy.org/doc/numpy-dev/reference/index.html

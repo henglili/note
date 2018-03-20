@@ -1,0 +1,10 @@
+* Spark 概述
+  Apache Spark 是一个快速的并且多用途的集群计算系统。它提供了一个丰富的工具集，包括：Spark SQL 用于 SQL 和结构化数据处理，MLlib 用于机器学习，GraphX 用于图形处理，和 Spark Streaming。
+  
+* TODO 在集群上 
+  [[https://spark.apache.org/docs/latest/cluster-overview.html][Cluster Mode Overview]]
+  [[https://spark.apache.org/docs/latest/spark-standalone.html][Spark Standalone Mode]]: 在私有集群上部署 spark 的最简单的方式
+
+
+
+

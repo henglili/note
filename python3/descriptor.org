@@ -1,0 +1,53 @@
+[[https://docs.python.org/3/howto/descriptor.html?highlight=descriptor][Descriptor HowTo Guide]]
+[[https://www.jianshu.com/p/250f0d305c35][Python 黑魔法 --- 描述器 (descriptor)]]
+
+* Definition
+  描述器是一个有绑定行为的对象，它的属性访问被描述器协议中的方法重写。
+  一个对象中定义了 __get__(), __set__() 和 __delete__() 中的任意方法，被叫做描述器。
+
+* Descriptor Protocol
+  descr.__get__(self, obj, type=None) --> value
+  descr.__set__(self, obj, vaule) --> None
+  descr.__delete__(self, obj) --> None
+
+  定义了 __get__() 和 __set__() 或者只有 __set__() 的对象叫做 data descriptor
+  只定义了 __get__() 方法的对象叫做 non-data descriptor 
+  read-only data descriptor 定义了 __get__() 和 __set__() 的对象，并且 __set__() 抛了一个 AttributeError 异常
+
+* Invoking Descriptor
+  
+  obj.d 的访问顺序，取决于 obj 是 object 还是 class。
+  
+  object 的时候, object.__getattribute__() 将 b.x 解析成 type(b).__dict__['x'].__get__(b, type(b))
+  优先级顺序是 data descriptor > instance variable (instance.__dict__['x']) > non-data descriptor, 如果提供了 __getattr__(), 那么它的优先级是最低的。
+  
+  class 的时候，type.__getattribute__() 将 B.x 解析成 B.__dict__['x'].__get__(None, B)
+  
+
+先访问对象的__dict__, 再访问类的__dict__
+
+类方法使用 @classmethod 装饰器定义, 经过该装饰器的方法是一个描述器。@classmethod 装饰器会把方法变成一个描述器。 
+在通过[.]调用类方法时，实际调用的是这个描述器的 __get__ 方法
+
+* Properties
+   使用 property() 是一个简介的方法来创建一个 data descriptor。形式如下：
+
+   property(fget=None, fset=None, fdel=None, doc=None) -> property attribute
+
+   可以用来在不影响已存在的代码的情况下，来提升以后再写的代码
+
+* Functions and Methods
+   Class 的 __dict__ 中存储 methods 作为 functions。在类定义中，methods 使用 def 和 lambda 定义。
+   methods 不同于常规 functions 的地方只有第一个参数保留为对象的实例。
+
+   functions 包括 __get__() 方法用来绑定 methods 在 属性访问时。这意味着 functions 是一个 non-data descriptors。
+
+* Static Methods and Class Methods
+   
+   | Transformation | Called from a Object | Called from a Class |
+   |----------------+----------------------+---------------------|
+   | function       | f(obj, *args)        | f(*args)            |
+   | staticmethod   | f(*args)             | f(*args)            |
+   | classmethod    | f(type(obj), *args)  | f(klass, *args)     |
+ 
+
