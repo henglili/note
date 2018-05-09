@@ -1,0 +1,340 @@
+
+* 第二章 Scala 入门
+** 定义变量
+   val：一旦初始化不能被重新赋值。
+   var
+   Scala 并不是在变量名之前给出类型，而是在变量名之后，变量名和类型之间使用分号（:）隔开。
+** 定义函数
+   #+begin_src scala
+     def max(x: Int, y: Int): Int = {
+       if (x > y)
+         x
+       else
+         y
+     }
+     max(1,2)
+   #+end_src
+
+   #+RESULTS:
+   : max: (x: Int, y: Int)Int
+   : res6: Int = 2
+   
+   函数体之前的等号也有特别的含义，表示在函数式的世界观里，函数定义的是一个可以获取到结果值的表达式。
+   如果函数是递归的，必须显示地给出函数的结果类型。
+   如果函数只有一条语句，也可以选择不使用花括号。
+
+** 用 while 做循环；用 if 做判断
+   #+begin_src scala
+     var i = 0
+     val l = List("scala", "is", "fun")
+     while (i < l.length){
+       println(l(i))
+       i += 1
+     }
+   #+end_src
+   
+   #+RESULTS:
+   : i: Int = 0
+   : l: List[String] = List(scala, is, fun)
+   : scala
+   : is
+   : fun
+   
+   Java 中的 i++ 和 ++i 在 Scala 中并不工作
+   Scala 中 while 或 if 语句中的 boolean 表达式必须放在圆括号里。如果 if 代码块只有单个语句，可以选择不写花括号。这点和 Java 是一样的。
+   这并不是最佳的 scala 风格。
+   
+** 使用 foreach 和 for 遍历
+   当你写下 while 循环时，实际上是在以指令式（imperative）的风格编程。指令时风格也是类似 Java，C++，C 这样的语言通常的风格，依次给出执行指令，通过循环来遍历，而且还经常变更被不同函数共享的状态。Scala 允许以指令式风格编程，不过随着你对 Scala 的了解日益加深，你应该更倾向于使用更加函数式（functional）的风格。
+   函数式编程语言的主要特征之一就是函数是一等的语法单元。例如：
+   #+begin_src scala
+     val l = List("Concise", "is", "nice")
+     l.foreach(arg => println(arg))
+   #+end_src
+
+   #+RESULTS:
+   : l: List[String] = List(Concise, is, nice)
+   : Concise
+   : is
+   : nice
+   foreach 方法传入的是一个函数字面量（function literal）。
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/函数字面量语法.png]]
+   
+   如果函数字面量只是一个可以接收单个参数的语句，可以不必给出参数名和参数本身。这个简写规则用到的特性叫作部分应用函数（partially applied function），在 8.6 节会有详细介绍。
+   #+begin_src scala
+     val l = List("Concise", "is", "nice")
+     l.foreach(println)
+   #+end_src
+
+   #+RESULTS:
+   : l: List[String] = List(Concise, is, nice)
+   : Concise
+   : is
+   : nice
+
+
+   #+begin_src scala
+     val l = List("for", "arg", "in", "args")
+     for(arg <- l)
+       println(arg)
+   #+end_src
+
+   #+RESULTS:
+   : l: List[String] = List(for, arg, in, args)
+   : for
+   : arg
+   : in
+   : args
+   
+   在 <- 符合左边的 arg 是一个 val 变量。对于 args 中的每一个元素，一个新的名为 arg 的 val 会被创建出来。
+
+
+* 第三章 Scala 入门（续）
+** 用类型参数化（parameterize）数组
+   参数化的意思是，在创建实例时对实例做“配置”。比如使用 new 来实例化对象时，可以用值和类型来对其进行参数化。
+   注意，当你使用类型和值来参数化一个实例时，先是方括号包起来的类型（参数），然后才是用圆括号包起来的值（参数）。
+   类型参数（方括号包起来的类型名称）是该实例类型的一部分，但值参数（圆括号包起来的值）并不是。
+   
+   #+begin_src scala
+     val greetStrings = new Array[String](3)
+     greetStrings(0) = "Hello"
+     greetStrings(1) = ", "
+     greetStrings(2) = "world!\n"
+     for(i <- 0 to 2)
+       print(greetStrings(i))
+
+     // 也可以显示的给出 greetStrings 的类型
+     val greetStrings1: Array[String] = new Array[String](3)
+   #+end_src
+
+   #+RESULTS:
+   : greetStrings: Array[String] = Array(null, null, null)
+   : Hello, world!
+   : greetStrings1: Array[String] = Array(null, null, null)
+   : numName: Array[String] = Array(zero, one, two)
+
+   这个例子展示了 Scala 关于 val 的一个重要概念。当你用 val 定义一个变量时，变量本身不能被重新赋值，但是它指向的那个对象是可能发生改变的。数组本身是可变的。
+   for 表达式的第一行展示了 Scala 的另一个通行规则：如果一个方法只接收一个参数，在调用它的时候，可以不使用英文句点或圆括号。例如：0 to 2 会被转换为 (0).to(2)
+   Scala 从技术上将并没有操作符重载（operator overloading），因为它实际上并没有传统意义上的操作符。类似 + ，-，*，/ 这样的字符可以被用作方法名。例如：1 + 2 是 (1).+(2)
+   另外一个重要理念是为什么 Scala 用圆括号（而不是方括号）来访问数组。跟 Java 比起来 Scala 特例更少。数组不过是类的实例，这一点跟其他 Scala 实例没有本质区别。当你用一组圆括号将一个或多个值包装起来，并将其应用（apply）到某个对象时，Scala 会将这段代码转换成对这个对象的一个名为 apply 的方法的调用。访问数组的一个元素就是一个简单的方法调用。当然，这仅对在对象的类型实际上定义了 apply 方法是才能编译通过。因此，这并不是一个特例，而是一个通行规则。
+   同理，当我们尝试对通过圆括号应用了一个或多个参数的变量进行赋值时，编译器会将代码转换成对 update 方法的调用。
+   
+   #+begin_src scala
+
+// Scala 创建并初始化数组的推荐做法
+val numName = Array("zero", "one", "two")
+
+   #+end_src
+
+   #+RESULTS:
+   : numName: Array[String] = Array(zero, one, two)
+
+   这个例子，实际上是调用了一个名为 apply 的工厂方法，这个方法创建并返回了新的数组。该方法定义在 Array 的伴生对象（companion object）中。
+** 使用列表
+   函数式编程的重要概念之一是方法不能有副作用。这样做的好处是方法不再相互纠缠在一起，因此变得更可靠，更易复用。另一个好处（作为静态类型的编程语言）是类型检查器会检查方法的入参和出参，因此逻辑错误通常都是以类型错误的形式出现。将这个函数式的哲学应用到对象的世界意味着让对象不可变。
+   Scala 的 List 是不可变的。
+   #+begin_src scala
+     val twoThree = List(2, 3)
+     val oneTwoThree = 1 :: twoThree
+     println(oneTwoThree)
+   #+end_src
+
+   #+RESULTS:
+   : twoThree: List[Int] = List(2, 3)
+   : oneTwoThree: List[Int] = List(1, 2, 3)
+   : List(1, 2, 3)
+
+   注意 :: 是右操作元（right operand，即 twoThree 这个列表的方法）。背后的规则是，如果一个方法被用到操作符表示法（operator notation）中时，调用默认发生在左操作元（left operand），除非方法名以冒号（:）结尾。
+   空列表的快捷表示为 Nil。
+   为什么不在列表末尾追加元素？List 类提供了追加操作（:+），但是很少被使用，因为往列表末尾追加元素的操作所需要的时间随列表的大小线性增加，而使用 :: 在列表前面添加元素只需要常量时间。如果想通过追加元素的方式高效地构建列表，可以依次在头部添加完成后，在调用 reverse。也可以使用 ListBuffer，这是个可变列表，支持追加操作，完成后调用 toList 即可。
+   #+begin_src scala
+     // 列表的一些常用方法
+     List()
+     Nil
+     List("Cool", "tools", "rule")
+     val thrill = "Will" :: "fill" :: "util" :: Nil
+     List("a", "b") ::: List("c", "d")
+     thrill(2)
+     thrill.count(s => s.length == 4)
+     // 去掉头两个元素
+     thrill.drop(2)
+     // 去掉末尾两个元素
+     thrill.dropRight(2)
+     thrill.exists(s => s == "util")
+     thrill.filter(s => s.length == 4)
+     thrill.forall(s => s.endsWith("l"))
+     thrill.foreach(s => println(s))
+     thrill.foreach(println)
+     // 返回头一个元素
+     thrill.head
+     // 返回除最后一个元素以外的其他元素组成的列表。
+     thrill.init
+     thrill.isEmpty
+     // 返回最后一个元素
+     thrill.last
+     thrill.length
+     thrill.map(s => s + "y")
+     thrill.mkString(", ")
+     thrill.filterNot(s => s.length == 4)
+     thrill.reverse
+     // thrill.sort((s,t) => s.charAt(0).toLower < t.charAt(0).toLower)
+     // 返回除头一个元素以外的其它元素组成的列表
+     thrill.tail
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   res128: List[Nothing] = List()
+   res129: scala.collection.immutable.Nil.type = List()
+   res130: List[String] = List(Cool, tools, rule)
+   thrill: List[String] = List(Will, fill, util)
+   res131: List[String] = List(a, b, c, d)
+   res132: String = util
+   res133: Int = 3
+   res134: List[String] = List(util)
+   res135: List[String] = List(Will)
+   res136: Boolean = true
+   res137: List[String] = List(Will, fill, util)
+   res138: Boolean = true
+   Will
+   fill
+   util
+   Will
+   fill
+   util
+   res141: String = Will
+   res142: List[String] = List(Will, fill)
+   res143: Boolean = false
+   res144: String = util
+   res145: Int = 3
+   res146: List[String] = List(Willy, filly, utily)
+   res147: String = Will, fill, util
+   res148: List[String] = List()
+   res149: List[String] = List(util, fill, Will)
+   res150: List[String] = List(fill, util)
+   #+end_example
+
+** 使用元组
+   元组也是不可变的，元组可以容纳不同类型。一旦实例好一个元组，可以使用英文句点，下划线和从 1 开始的序号来访问每一个元素。
+   #+begin_src scala
+     val pair = (99, "Luftballons")
+     println(pair._1)
+     println(pair._2)
+   #+end_src
+
+   #+RESULTS:
+   : pair: (Int, String) = (99,Luftballons)
+   : 99
+   : Luftballons
+
+   为什么不能像访问列表元素那样访问元组元素。背后的原因是列表的 apply 方法永远只返回同一种类型，但元组里的元素可以是不同类型的。_1 可能是一种类型，_2 可能是另一种类型。目前 Scala 标准库只支持到 Tuple22 （即包含 22 个元素的元组）。
+
+** 使用集和映射
+   集合类库特意对可变和不可变的集合进行了区分。默认创建一个不可变集。如果需要可变的，要做一次 import。
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/set 的类继承关系.png]]
+
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/map 的类继承关系.png]]
+
+   #+begin_src scala
+     var jetSet = Set("Boeing", "Airbus")
+     jetSet += "Lear"
+     println(jetSet.contains("Cessna"))
+   #+end_src
+
+   #+RESULTS:
+   : jetSet: scala.collection.immutable.Set[String] = Set(Boeing, Airbus)
+   : false
+
+   注意第二行，"jetSet += "Lear"" 本质上是 jetSet = jetSet + "Lear" 的简写。
+   + 方法会创建一个并返回一个包含新元素的 Set。所以 jetSet 定义时要使用 var，因为重新进行了赋值。
+    
+   #+begin_src scala
+     import scala.collection.mutable
+     val movieSet = mutable.Set("Hitch", "Poltergeist")
+     movieSet += "Shrek"
+     println(movieSet)
+   #+end_src
+
+   #+RESULTS:
+   : import scala.collection.mutable
+   : movieSet: scala.collection.mutable.Set[String] = Set(Poltergeist, Hitch)
+   : res9: movieSet.type = Set(Poltergeist, Shrek, Hitch)
+   : Set(Poltergeist, Shrek, Hitch)
+
+   第三行的 += 实际上是定义在可变 Set 上的方法。
+
+   #+begin_src scala
+     val romanNumeral = Map(1 -> "I", 2 -> "II", 3 -> "III", 4 -> "IV", 5 -> "V")
+     println(romanNumeral)
+   #+end_src
+
+   #+RESULTS:
+   : romanNumeral: scala.collection.immutable.Map[Int,String] = Map(5 -> V, 1 -> I, 2 -> II, 3 -> III, 4 -> IV)
+   : Map(5 -> V, 1 -> I, 2 -> II, 3 -> III, 4 -> IV)
+
+   -> 也是方法
+   
+   #+begin_src scala
+     import scala.collection.mutable
+
+     val treasureMap = mutable.Map[Int, String]()
+     treasureMap += (1 -> "Go to island.")
+     treasureMap += (2 -> "Find big X on ground.")
+     treasureMap += (3 -> "Dig.")
+     println(treasureMap(2))
+   #+end_src
+
+   #+RESULTS:
+   : import scala.collection.mutable
+   : treasureMap: scala.collection.mutable.Map[Int,String] = Map()
+   : res14: treasureMap.type = Map(1 -> Go to island.)
+   : res15: treasureMap.type = Map(2 -> Find big X on ground., 1 -> Go to island.)
+   : res16: treasureMap.type = Map(2 -> Find big X on ground., 1 -> Go to island., 3 -> Dig.)
+   : Find big X on ground.
+
+** 识别函数式编程风格
+   scala 更偏向于使用 val 。
+   
+   #+begin_src scala
+     def printArgs(args: Array[String]): Unit = {
+       var i = 0
+       while(i < args.length) {
+         println(args(i))
+         i += 1
+       }
+     }
+
+     // 去掉 var
+     def printArgs1(args: Array[String]): Unit = {
+       for(arg <- args)
+         println(arg)
+     }
+
+     // 或者
+     def printArgs2(args: Array[String]): Unit = {
+       args.foreach(println)
+     }
+   #+end_src
+
+   #+RESULTS:
+   : printArgs: (args: Array[String])Unit
+   : printArgs1: (args: Array[String])Unit
+   : printArgs2: (args: Array[String])Unit
+
+   重构后的方法依然不是 ”纯“ 的函数式代码，因为它有副作用（本例中它的副作用是像标准输出流打印）。带有副作用的函数的标志性特征是结果类型为 Unit。如果一个函数不返回任何有意义的值，也就是 Unit 这样的结果类型所表达的意思，那么这个函数存在于世上唯一的意义就是产生某种副作用。
+   
+   #+begin_src scala
+     def formatArgs(args: Array[String]) = args.mkString("\n")
+   #+end_src
+
+   #+RESULTS:
+   : formatArgs: (args: Array[String])String
+
+   scala 是指令式/函数式混合（hybrid）编程语言，你会发现有些场景下对于要解决的问题而言指令式更为合适，这个时候不要犹豫，使用指令式的风格就好。
+
+* 第四章 类和对象
+
+  

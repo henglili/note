@@ -1,0 +1,175 @@
+* [[https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html][Structured Streaming Programming Guide]]
+* 概述
+    Structured Streaming 是一个建立在 Spark SQL 引擎基础上的可扩展和容错的流处理引擎。你可以表示你的流式计算和你在一个静态数据集上表示一个批处理计算的方式一样。Spark SQL 引擎将负责逐步的连续的运行它，并且在流式数据持续到达时更新最终结果。你可以使用 [[https://spark.apache.org/docs/latest/sql-programming-guide.html][Dataset/DataFrame API]] in Scala, Java, Python, or R 去表示 streaming aggregations, event-time windows, stream-to-batch joins 等等。最后，系统通过 checkpointing 和 Write Ahead Logs（预写log？) 来确保端到端的，exactly-once, 容错保证。 
+    在内部，默认情况下，使用 micro-batch 处理引擎处理 Structured Streaming queries。但是，从 Spark 2.3 开始，我们引进了一个新的 low-latency（低延迟) 处理模型叫做 Continuous Processing, 可以在保证 at-least-once 的情况下实现低至 1 毫秒的端到端延迟。
+    在这个手册中，我们将阐述默认的 micro-batch 的主要概念，之后讨论 Continuous Processing 模型。
+
+* 编程模型
+    Structured Streaming 中的关键思想是将实时数据流视为一个不断附加的表。这导致新的流处理模型与批处理模型非常的相似。你将把流失计算表示为标准的 batch-like query，就像在静态表上一样，Spark 将它作为 unbounded input table（无界输入表)上的 incremental query（增量查询)来运行。
+
+** 基础概念
+    将输入数据流作为 Input Table。每个到达流中的数据项就像一个新的行被添加到 Input Table 中。在输入中的查询将会生成一个 Result Table。每个触发间隔（比如说：1 秒钟），新的行会被添加到 Input Table 中，最终会更新到 Result Table 中。每当结果表被更新时，我们都希望将已更改的结果行写入 external sink（外部接收器)。
+    输出可以有不同的模式：
+***** Complete Mode: 整个更新 Result Table 将会被写到外部存储器。由存储链接决定如何处理整个表的写入
+***** Append Mode: 从上次触发开始，只有 Result Table 中附加上的新行才会被写入外部存储器。这仅适用于预计不会更改 Result Table 中现有行的查询。
+***** Update Mode: 从上次触发开始，只用 Result Table 中被更新的行才会被写入外部存储器。需要注意的是，这与之前的 Complete Mode 的不同之处在于此模式仅输出自上次触发后改的行。如果查询不包括聚合，它将等同于 Append Mode。
+
+** 处理 Event-time 和后期的数据
+    Event-time 是嵌入数据本身的时间。对于许多应用程序，你可能希望对 Event-time 进行操作。例如，如果你想得到由 loT devices（物联网设备?) 产生的事件数，那么你可能想使用数据生成时的时间（这个就是数据中的 Event-time)，而不是 Spark 收到数据的时间。在这个模型中 Event-time 被非常自然的表示 - 每个由设备产生的事件是表中的一行，event-time 是这行中的一列。这允许基于窗口的聚合（例如：每分钟的事件数量)仅仅是 event-time 列上的特殊类型的分组和聚合 - 每个时间窗口是一组，并且每行可以属于多个窗口/组。因此，可以在静态数据集（例如，从收集的设备时间日志）以及在数据流殇一致的定义 event-time-window-based（基于时间时间窗口）的聚合查询，从而使用户的生活更加容易。
+    此外，该模型可以自然的处理根据 event-time 迟于预期时间到达的数据。由于 Spark 正在更新结果表，它可以完全控制在存在后期数据时更新旧聚合，以及清理旧聚合以限制中间状态数据的大小。自 Spark 2.1 以来，我们支持加水印，它允许用户指定后期数据的阈值，并允许引擎相应地清理旧状态。
+
+** 容错 Semantics?
+    略
+
+* API 使用 Datasets 和 DataFrames
+    自 Spark 2.0 以来，DataFrames 和 Datases 可以表示静态的，有界数据以及流式的，无界的数据。你可以使用公共入口点 SparkSession 从流数据源来创建流式 DataFrames/Datasets，并和静态 DataFrame/Datasets 使用相同的操作。 
+
+** 创建流式 DataFrames 和流式 Datasets
+    流式 DataFrames 可以通过 /SparkSession.readStream()/ 返回的 /DataStreamReader/ 接口创建。与创建静态 DataFrame 的读取接口类似，你可以指定数据源的详细信息 - 数据格式，模式，选项等等。
+
+*** 输入数据源
+    这里由几个内置的数据源
+***** File source
+      以数据流的形式读取目录中写入的文件。支持的文件格式有 text, csv, json, orc, parquet。查看 DataStreamReader 的接口文档以获取更新的列表。需要注意的是文件必须是原子的放置在给定的目录中，在大部分的文件系统中，这可以通过文件移动操作来实现。
+***** Kafka source
+      从 Kafka 读文件。
+***** Socket source(for testing)
+      从 socket 链接读取 UTF8 文本数据。在驱动程序中监听服务器 socket 端口。需要注意，这之应用于测试，因为不能提供 end-to-end fault-tolerance 保证。
+***** Rate source(for testing)
+      以美妙指定的行数生成数据，每个输出行包含时间戳和值。其中时间戳是一个包含信息分派时间的时间戳类型，并且值为包含消息计数的长整型，从0开始作为第一行。这个源只用于测试和基准测试。
+     这些示例生成流类型的 DataFrame，它们是无类型的，这意味着 DataFrame 的模式在编译时不被检查，只在运行时在查询被提交示检查。一些像 map，flatMap 操作等等需要在编译时知道类型。为此，可以使用于静态 Data Frame 相同的方法将这些非类型化流式 DataFrame 转换为类型化流式数据集。
+
+*** Schema 接口和流式 DataFrames/Datasets 的分割
+    默认情况下，来自基于文件的源数据的结构化流式传输需要你去指定模式，而不是依赖 Spark 自动推断。此限制可确保流式查询使用一致的模式，即使在出来故障时也是如此。对于临时用例，可以通过将 spark.sql.streaming.schemaInference 设置为 true 来重启模式推断。
+    当存在名为 //key=value// 的子目录时，会发生分区发现，并且列表将自动递归到这些目录中。如果这些列出现在用户提供的模式中，那么它们将由 Spark 根据正在读取的文件的路径填写。组成分区模式的目录必须在查询开始是存在，并且必须保持静态。
+
+** 在流式 DataFrames/Datasets 上进行操作
+    你可以对流式 DataFrames/Datasets 应用各种操作 - 从非类型化，类似 SQL 的操作（例如，select，where，groupBy），到类型化类似 RDD 操作（例如，map, filter, flatMap)。
+*** 基础操作 - 选择，映射，聚合
+*** 在 Event Time 上的窗口操作
+    滑动 event-time 窗口上的聚集对结构化流式处理来说非常简单，并且于分组聚合很相似。在分组聚合中，为用户指定的分组列中的每个唯一的值维护一个聚合值（例如，counts）。在基于窗口的聚合中，对于行所在的每个event-time 窗口都会维护一个聚合值。
+    由于窗口跟 group 相似，在代码中，你可以使用 /groupBy()/ 和 /window()/ 操作来表示窗口聚合。
+**** 处理后期数据和水印
+    现在考虑如果一个事件后期应用程序会发生什么。例如，假设在 12:04(event-time) 产生的单词在 12:11 被应用程序收到。应用程序应该使用 12:04 而不是 12:11 来更新旧的计数。这种情况在我们的基于窗口的分组中会很自然的发生 - 结构化流可以保持很长一段时间的聚合中间状态，以便后期的数据可以正确更新旧窗口的聚合。
+    可是，为了一直运行此查询，系统必须限制其在内存中积累的中间状态量。这意味着系统需要知道何时可以将旧的聚合数据从内存中删除，因为应用程序不会再收到那个聚合的后期数据。为了实现这一点，我们在 Spark 2.1 中引入了水印功能，让引擎自动跟踪数据中的当前事件事件并相应地尝试清理旧状态。你可以通过指定 event-time 的列和阈值来定义查询的水印，数据预计在 event-time 之上有多迟。对于从时间 T 开始的特定窗口，引擎将保持状态并且允许后期数据更新状态直到（引擎看到的最大时间时间 - 滞后阈值 > T）。换句话说，阈值内后期数据将会被汇总，但低于阈值的数据将会被丢掉。
+    如果这个查询运行在 Update 输出模式中，引擎将会保持一个窗口的更新数据在 Result Table 里直到窗口持续超过水印时间。
+
+    
+    某些接收器（例如文件）可能不支持更新模式所需的 fine-graineds（细粒度的） 更新。为了和他们一起工作，我们也支持 Append 模式，其中只有最后的状态会被写入 sink。
+    与之前的 Update 模式类似，引擎为每一个窗口维护中间计数。但是，部分计数不会更新到 Result Table，也不会写入 sink。引擎等待“10分钟”使得后期数据被计入，然后当窗口时间 < 水印时删除窗口的中间状态，并且追加最终的计数结果到 Result Table/sink。
+***** 水印清除聚合状态的条件
+     水印清除聚合查询状态必须满足的条件
+****** 输出模式必须是 Append 或者 Update
+      Complete 模式要求保留所有聚合数据，因此不能使用水印降低中间状态。
+****** 聚合必须有 event-time 列，或者一个在 event-time 列上的窗口。
+****** withWatermark 必须使用与聚合中使用的时间戳列相同的列。
+****** withWatermark 必须在调用聚合之前使用。
+***** 水印聚合的 Semantic 保证
+****** 水印延迟 “2小时” 保证引擎将不会丢弃任何延迟小于 2 小时的数据。换句话说，在此前处理的最新数据落后于 2 小时以内（就 event-time而言）的任何数据都保证被聚合。
+****** 然而，保证只在一个方向上是严格的。延迟超过 2 个小时的数据不保证被丢弃；它可能被聚合，也可能不被聚合。数据延迟越大，引擎处理数据的可能性越小。
+*** Join 操作
+    Structured Streaming 支持将一个 Streaming Dataset/DataFrame 和 一个静态的 Dataset/DataFrame 以及另一个 Streaming Daaset/DataFrame 连接。流式链接的结果是增量生成的。类似于上一节中流式聚合的结果。在本节中，我们讨论什么类型的链接（例如，inner，outer，等等）在上述情况下是支持的。需要注意的是在所有支持的连接类型中，与 streaming Dataset/DataFrame 的连接结果，就像与流中包含相同数据的静态 Dataset/DataFrame 的连接效果是一样的。 
+**** Stream-static Joins
+     自 Spark 2.0 引入以来，Structured Streaming 就已经支持在流和静态 DataFrame/Dataset 之间的连接操作（内部连接和一些类型的外部连接）。
+**** Stream-stream Joins
+    在 Spark 2.3 中，我们增加了对 stream-stream 的支持，也就是说， 你可以连接两个 streaming Datasets/DataFrames。在两个数据流中生成连接结果的挑战在于，在任何时间点，对于连接的两侧数据集的视图都是不完整的，这使得在输入之间查找匹配更加困难。从一个输入流的接受的任何行可以与来自另一个输入流的任何捡来的，尚未接收的行匹配。因此，对于两个流，我们将国务的输入缓冲为状态，以便我们可以将每个未来的输入与过去的输入匹配，并相应地生成联合结果。此外，类似于流式聚合，我们自动的处理延迟的无序数据，并可以用水印限制状态。让我们讨论一下支持的不同类型的 stream-stream 连接以及如何使用它们。
+***** 带有可选水印的内连接
+      支持任何类型列伤的内部链接以及任何类型的连接条件。但是，随着流的运行，流状态的大小将无限增长，因为所有过去的输入都必须保存，因为任何新的输入都可以与过去的任何输入匹配。为了避免无边界的状态，你必须定义附加的连接条件，以便无期限的旧输入不能与将来的输入匹配，因此可以从状态中清除。换句话说，你必须在连接中执行一下附加步骤。
+      1. 在两个输入上定义水印延迟，以便引擎可以知道输入可以延迟多久
+      2. 定义两个输入之间的 event-time 约束，以便引擎能够计算出何时不需要一个输入的旧行（即，不满足时间约束）来与另一个输入匹配。可以通过一下两种方式来定义此约束。
+         1. 时间范围连接条件（例如，... JOIN ON leftTime BETWEEN rightTime AND rightTIme + INTERVAL 1 HOUR)
+         2. 通过 event-time 窗口连接（例如，... JOIN ON leftTimeWindow = rightTimeWindow）
+
+      假设我们希望将广告投放流（当广告被展示时）与用户点击广告的另一个流相结合，要允许此 stream-stream 连接中的状态清理，你必须指定水印延迟和时间约束，如下所示，
+         1. 水印延迟：例如，投放和相应的点击在 event-time 上可以延迟/无序，分别最多 2 和 3 小时。
+         2. event-time 范围条件：例如，点击可以发生在相应投放之后 0 秒到 1 小时的时间范围内。
+      
+****** 基于水印的 stream-stream 内链接的 semantic 保证
+       与水印聚合的类似。
+
+***** 带有水印的外连接
+      虽然水印 + event-time 的约束对于内连接是可选的，但是对于左外连接和右外连接他们是必须指定的。这是为了外连接中生成 NULL 结果，引擎必须知道输入行将来何时不匹配任何内容。因此，必须指定水印 + event-time 约束才能生成正确的结果。
+****** 基于水印的 stream-stream 的流外连接 sematic 保证
+       与内链接一样
+****** 警告
+       关于如何生成外部结果，需要注意几个重要特性。
+******* 外部 NULL 结果的延迟生成取决于指定的水印延迟和时间范围条件。这是因为引擎必须等待很长时间才能确保没有匹配项，并且将来也不会再有匹配项。
+******* 在 micro-batch 处理引擎的当前实现中，水印在 micro-batch 结束时被提高，下一个 mirco-batch 使用更新的水印去清理状态并且输出结果。由于我们只有在有新数据需要处理是才触发 mirco-batch，因此如果流中没有接收到新数据，则可能延迟外部连接的结果的生成。简而言之，如果两个被连接的输入流在一段时间内没有收到数据，那么这个外部连接（包括：左外连接和右外连接）的输出可能会延迟。
+***** 流查询中连接的支持矩阵
+      [[https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#support-matrix-for-joins-in-streaming-queries]]
+      有关支持的连接的其它详细信息
+****** 连接可以是集联的。你可以 /df1.join(df2, ...).join(df3, ...).join(df4, ...)/
+****** 从 Spark 2.3 开始，你只能在查询处于 Append 输出模式时使用连接。其它输出模式还不支持。
+****** 从 Spark 2.3 开始，你不能在连接之前使用其它 non-map-like 操作。以下是一些无法使用的实例。
+******* 在连接之前不能使用流聚合操作。
+******* 在连接之前，不能在 Update 模式中使用 mapGroupsWithState 和 flatMapGroupsWithState
+
+*** 流式重复数据消除
+    你可以使用事件中的唯一标示符对数据流中的记录进行重复数据消除。这与使用唯一标示符列的静态重复数据消除完全相同。查询将会存储以前记录中的必要数据量，以便过滤重复数据。与聚合类似，你可以在使用去重的同时使用或者不使用水印。
+****** 使用水印 - 如果对重复记录到达的时间有上限，则可以在事件时间列上定义水印，并使用 guid 和事件时间列进行重复数据消除。查询将使用水印从过去的记录中删除旧的状态数据，这些记录预计将不会再获得任何重复数据。这会限制查询必须维护的状态量。
+****** 不使用水印 - 由于当一个可能重复的数据到来时没有一个界限，所以查询需要存储所有过去的记录数据作为状态。
+
+*** Arbitrary Stateful Operations 
+    许多用例需要比聚合更高级的有状态操作。例如，在许多用例中，你必须从事件的数据流跟踪会话。要执行此类会话化，你必须将任意类型的数据保存为状态，并使用每个触发器中的数据流事件对该状态执行任意操作。从 Spark 2.2 开始，这可以使用操作 mapGroupsWithState 和更强大的操作 flatMapGroupsWithState 来完成。这两个操作都允许你在分组数据集上应用用户定义的代码已更新用户定义的状态。
+
+*** 不支持的操作
+    流式 DataFrames/Datasets 不支持一些 DataFrames/Datasets 的操作。其中一些建议如下。
+***** 流式 Datasets 上尚不支持多个流式聚合（即 流式 DF 上的链式聚合）
+***** 流式 Datasets 上不支持限制和获取前 N 行
+***** 流式 Datasets 上不支持 Distinct 操作
+***** 只有在聚合后并且在 Complete 输出模式下，才支持流式 Datasets 的排序操作
+***** 一些外部聚合操作在流式 Datasets 上不支持。另外，一些 Dataset 方法在流式 Datasets 上将不会执行。它们是将立即运行查询并返回结果的操作，这些在流式 Dataset 上将不会起作用。相反，可以通过显示启动流查询来完成这些功能。
+***** count() - 使用 /ds.groupBy().count()/ 来替代
+***** foreach() - 使用 /ds.writeStream.foreach()/ 来替代
+***** show - 使用 console sink 来替代
+    如果使用这些操作，会抛出 AnalysisException 异常，如 "operation XYZ is not supported with streaming DataFrames/Datasets"。
+
+** 开始流式查询
+   一旦定义了最终结果 DataFrame/Dataset，剩下的就是开始流计算。为了达成这个目的，你需要去使用通过 /Data.writeStream()/ 来返回 DataStreamWriter(Scala/Java/Pyhon docs)。你必须在这个接口中指定以下一项或多项。
+***** 输出接收器的细节：数据格式，位置，等等。
+***** 输出模式：指定写入到输出库的内容。
+***** 查找名字：可选的，指定给查询一个唯一的名字用来进行标识别。
+***** 触发间隔：可选的，指定触发间隔。如果为指定，系统将在前一次处理完成后检查新数据的可用性。如果由于前一次处理没有完成而错过了触发时间，那么系统将立即触发处理。
+***** 检查点位置：对于能够保证端到端容错能力的输出接收器，指定系统将写入所有检查点信息的位置。这应该是一个 HDFS 兼容的容错的文件系统下的目录。
+*** 输出模式
+    有几种输出模式：
+***** Append mode（default）：这是默认模式，只有新的行添加到结果表，因为上一次触发将被输出到接收器。只支持那些添加不会更改的行到结果表的查询。因此，这种模式保证每一行只保证每一行只输出一次（假设容错接收器）。例如：查询只有 select, where, map, flatMap, filter, join 等等支持 Append mode。
+***** Complete mode：每次触发后整个结果表将会被输出到接收器。它支持聚合查询。
+***** Update mode：（自从 Spark 2.1.1 以来）从上次触发之后只有结果表中被更新的行将会被输出到接收器。更多的信息将在以后的版本中添加。
+    不同的流查询类型支持不同的输出模式。这里有一个复杂的矩阵。
+    
+    Queries with aggregation:
+        - Aggregattion on event-time with watermark: Append, Update, Complete
+        - Other Aggregation: Complete, Update
+    Queries with mapGroupsWithState: Update
+    Queries with flatMapGroupsWithState:
+        - Append, Update
+    Queries with joins: Append
+    Other queries: Append, Update
+*** 输出接收器
+***** File sink: parquet, orc, json, csv, etc.支持 Append 输出模式
+***** Kafka sink: 支持 Append，Update，Complete 输出模式
+***** Foreach sink: 对输出记录运行各种运算。支持 Append，Update，Complete 输出模式
+***** Console sink (for debugging): 支持 Append，Update，Complete 输出模式
+***** Memory sink (for debugging): 支持 Append 和 Complete 输出模式
+
+    注意：你必须调用 /start()/ 才能真正开始执行查询。它将返回一个控制持续执行的 StreamingQuery 对象。你可以使用它来管理 query。
+**** 使用 Foreach
+     foreach 操作允许在输出数据集上。从 Spark 2.1 开始，这仅适用于 Scala 和 Java。为了使用它，你必须实现 ForeachWriter（Scala/Java）接口。当触发器产生一系列行作为输出时，该接口会调用一些方法。
+***** writer 必须是可序列化的，因为它将会被序列化并发送到执行者去执行。
+***** 所有这三种方法，open，process 和 close 都将被执行者调用。
+***** 只有在调用 open 方法时，writer 必须完成所有的初始化（例如，打开连接，启动事物等等）。请注意，如果在创建对象时类中有任何初始化，那么该初始化将发生在驱动程序中（因为这是创建实例的地方），这可能不是你想要的。
+***** version 和 partition 是 open 的两个参数，他们唯一的表示需要被退出来的一组行。version 是随着每次触发而递增的 ID。partition 是一个表示输出分区的 id，因为输出是分布式的，将在多个执行器上进行处理。
+***** open 可以使用 version 和 partition 来选择是否要写入一系列行。因此，它可以返回 true （继续写入），或者 false（不需要写入）。如果返回 false，则不会在任何行上调用 process。例如，部分失败后，失败的触发中的某些输出部分可能已经被提交给了数据库。根据存储在数据库中的元数据，writer 可以识别已经提交的分区，并相应的返回 false 以跳过再次提交。
+***** 每当调用 open 是，close 也被调用了（除非 JVM 由于某种错误而推出）。即使 open 返回 false 也是如此。如果在处理和写入数据时出现错误，close 将被调用并返回错误。你有责任清理在 open 中创建的状态（例如，连接，事务等等），以免发生资源泄露。
+
+*** 触发
+    流式查询的触发器设置定义了流式数据的处理时间，查询是作为具有固定批处理间隔的微批处理还是作为连续处理查询来执行。以下是支持的各种触发器。
+| 触发类型               | 描述                                                                                                                                                                                                                                                                                                                                             |
+| 为指定（默认）         | 如果没有明确指定触发器设置，则默认情况下，将以微批处理模式开始执行查询，只要前一个微批处理完成，即可生成微批处理                                                                                                                                                                                                                                 |
+| 固定时间间隔的微批处理 | 该查询将以微批处理模式执行，其中微批次将在用户指定的时间间隔启动。如果前一个微批量在间隔内完成，则引擎等到间隔结束后在启动下一批微批处理。如果前一个微处理花费的时间超过了完成的时间间隔（即如果缺少了一个区间边界）那么下一个微处理将在前一批完成后立即启动（也就是说，它不会等到下一个间隔边界）。如果没有可用的新数据，则不会启动任何微处理。 |
+| 一次微处理             | 查询只执行一个微处理所有可用数据，然后自行停止。在你想定期启动集群，处理上一时段以来可用的所有内容，然后关闭集群的场景中，这非常有用。在某些情况下，这可能会导致显著的成本节省。                                                                                                                                                                 |
+| 持续固定检查点间隔     | 查询将以新的低延迟连续处理的模式执行。                                                                                                                                                                                                                                                                                                                              |
+
+
+** 管理流查询

@@ -1,0 +1,7 @@
+* agg
+  在整个 DataFrame 上不分组直接统计。（df.groupBy.agg() 的缩写）
+  #+begin_src ipython
+    
+
+  #+end_src
+
