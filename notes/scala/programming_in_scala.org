@@ -254,10 +254,10 @@ val numName = Array("zero", "one", "two")
    集合类库特意对可变和不可变的集合进行了区分。默认创建一个不可变集。如果需要可变的，要做一次 import。
 
    #+ATTR_ORG: :width 500
-   [[file:../../static/img/scala/set 的类继承关系.png]]
+   [[file:../../static/img/scala/set的类继承关系.png]]
 
    #+ATTR_ORG: :width 500
-   [[file:../../static/img/scala/map 的类继承关系.png]]
+   [[file:../../static/img/scala/map的类继承关系.png]]
 
    #+begin_src scala
      var jetSet = Set("Boeing", "Airbus")
