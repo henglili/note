@@ -116,14 +116,13 @@
        print(greetStrings(i))
 
      // 也可以显示的给出 greetStrings 的类型
-     val greetStrings1: Array[String] = new Array[String](3)
+     val greetStrings: Array[String] = new Array[String](3)
    #+end_src
 
    #+RESULTS:
    : greetStrings: Array[String] = Array(null, null, null)
    : Hello, world!
-   : greetStrings1: Array[String] = Array(null, null, null)
-   : numName: Array[String] = Array(zero, one, two)
+   : greetStrings: Array[String] = Array(null, null, null)
 
    这个例子展示了 Scala 关于 val 的一个重要概念。当你用 val 定义一个变量时，变量本身不能被重新赋值，但是它指向的那个对象是可能发生改变的。数组本身是可变的。
 
@@ -254,7 +253,6 @@ val numName = Array("zero", "one", "two")
    集合类库特意对可变和不可变的集合进行了区分。默认创建一个不可变集。如果需要可变的，要做一次 import。
 
    #+ATTR_ORG: :width 500
-   #+ATTR_HTML: :width 50% :height 50%
    [[file:../../static/img/scala/set的类继承关系.png]]
 
    #+ATTR_ORG: :width 500
@@ -272,7 +270,7 @@ val numName = Array("zero", "one", "two")
 
    注意第二行，"jetSet += "Lear"" 本质上是 jetSet = jetSet + "Lear" 的简写。
 
-   + 方法会创建一个并返回一个包含新元素的 Set。所以 jetSet 定义时要使用 var，因为重新进行了赋值。
+   "+" 方法会创建一个并返回一个包含新元素的 Set。所以 jetSet 定义时要使用 var，因为重新进行了赋值。
     
    #+begin_src scala
      import scala.collection.mutable
@@ -331,21 +329,22 @@ val numName = Array("zero", "one", "two")
      }
 
      // 去掉 var
-     def printArgs1(args: Array[String]): Unit = {
+     def printArgs(args: Array[String]): Unit = {
        for(arg <- args)
          println(arg)
      }
 
      // 或者
-     def printArgs2(args: Array[String]): Unit = {
+     def printArgs(args: Array[String]): Unit = {
        args.foreach(println)
      }
+
    #+end_src
 
    #+RESULTS:
    : printArgs: (args: Array[String])Unit
-   : printArgs1: (args: Array[String])Unit
-   : printArgs2: (args: Array[String])Unit
+   : printArgs: (args: Array[String])Unit
+   : printArgs: (args: Array[String])Unit
 
    重构后的方法依然不是 ”纯“ 的函数式代码，因为它有副作用（本例中它的副作用是像标准输出流打印）。带有副作用的函数的标志性特征是结果类型为 Unit。如果一个函数不返回任何有意义的值，也就是 Unit 这样的结果类型所表达的意思，那么这个函数存在于世上唯一的意义就是产生某种副作用。
    
@@ -361,8 +360,128 @@ val numName = Array("zero", "one", "two")
 * 第四章 类和对象
 ** 类，字段和方法
    #+begin_src scala
+     class ChecksumAccumulator{
+       // 这里是类定义
+     }
+   #+end_src
+   在类定义中，你会填入字段（field）和方法（method），这些被统称为成员（member）。字段保留了对象的状态，或者说数据，而方法用这些数据来对对象执行计算。
+   
+   字段又叫做实例变量（instance variable），因为每个实例都有自己的变量。
+
+   追求健壮性的一个重要手段是确保对象的状态（它的实例变量的值）在其整个声明周期都是有效的。首先是通过将字段标记为私有（private）来防止外部直接访问字段。在 Scala 中，使得成员允许公共访问（public）的方式是不再成员前面显示地给出任何访问修饰符。
+
+   Scala 方法参数的一个重要特征是它们都是 val 而不是 var。所有方法都是，不光是类中的方法。
+
+   在没有任何显示的 return 语句时，Scala 方法返回的是该方法计算出的最后一个（表达式的）值。实际上推荐的风格是避免使用任何显示的 return 语句，尤其是多个 return 语句。与此相反，尽量将每个方法当作是一个最终交出某个值的表达式。这样的哲学鼓励你编写短小的方法，将大的方法拆成小的。另一方面，设计中的选择也是取决于上下文的，Scala 也允许你方便地编写有多个显示 return 的方法，如果那确实是你想要的。
+
+   #+begin_src scala
+     class ChecksumAccumulator {
+       private var sum = 0
+       def add(b: Byte) = sum += b
+       def checksum() = ~(sum & 0xFF) + 1
+     }
+
+     /** 虽然 Scala 能够正确推到出 add 和 checksum 这两个方法的结果类型，
+     但是代码的读者需要在脑海里推断（mentally infer）这些结果类型。
+     所以，通常更好的做法是对类中声明为公有的方法显示地给出结果类型。
+     ,**/
+
+     class ChecksumAccumulator {
+       private var sum = 0
+       def add(b: Byte): Unit = {sum += b}
+       def checksum(): Int = ~(sum & 0xFF) + 1
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined class ChecksumAccumulator
+   : defined class ChecksumAccumulator
+   
+   结果类型为 Unit 的方法， 如 add 方法，执行的目的是为了它们的副作用。副作用通常来说指的是改变方法外部的某种状态或执行 I/O 的动作。就 add 而言，其副作用就是给 sum 重新赋值。
+
+   那些仅仅因为其副作用而被执行的方法被称作过程（procedure）。
+
+** 分号推断
+   在 Scala 程序中，每条语句最后的分号通常是可选的。如果想要一条跨多行的语句，大多数情况下直接换行即可，比如：if-else。不过偶尔 Scala 也会背离你的意图，在不该断句的地方断句：
+   #+begin_src scala
+     x
+     + y
+   #+end_src
+   
+   这段代码会被解析成 x 和 +y。解决办法，当用中缀（infix）操作符比如 + 来串接表达式时，一个常见的 Scala 风格是将操作符放在行尾而不是行首：
+   #+begin_src scala
+     x +
+     y +
+     z
+   #+end_src
+
+   分号推理规则：
+
+   概括的说，除非以下任何一条为 true，代码行的末尾就会被当作分号处理：
+
+   1. 当前行以一个不能作为语句结尾的词结尾，比如英文句点或中缀操作符。
+
+   2. 下一行以一个不能作为语句开头的词开头
+
+   3. 当前行的行尾出现在圆括号（...）或方括号 [...] 内，因为再怎么说圆括号和方括号也不能（直接）包含多条语句。
+
+** 单例对象
+   Scala 比 Java 更面向对象一点，是 Scala 的类不允许有静态（static）成员。对此类使用场景，Scala 提供了单例对象（singleton object）。单例对象的定义看上去跟类定义很像，只不过 class 关键字被换成了 object 关键字。
+
+   当单例对象跟某个类公用同一个名字是，它被称作这个类的伴生对象（companion object）。必须在同一个源文件中定义类和类的伴生对象。同时，类又叫作这个单例对象的伴生类（companion class）。类和它的伴生对象可以互相访问对方的私有成员。
+   #+begin_src scala
+     import scala.collection.mutable
+     object ChecksumAccumulator {
+       private val cache = mutable.Map.empty[String, Int]
+       def calculate(s: String): Int =
+         if (cache.contains(s))
+           cache(s)
+         else {
+           val acc = new ChecksumAccumulator
+           for(c <- s)
+             acc.add(c.toByte)
+           val cs = acc.checksum()
+           cache += (s -> cs)
+           cs
+         }
+     }
+
+     class ChecksumAccumulator {
+       private var sum = 0
+       def add(b: Byte): Unit = {sum += b}
+       def checksum(): Int = ~(sum & 0xFF) + 1
+     }
+   #+end_src
+
+   单例对象并不仅仅是用来存放静态方法，它是一等的对象。意味着：可以被存入变数或其他结构；可以被作为参数传递给其他函数；可以被作为函数的返回值；可以在执行期创造，而无需完全在设计期全部写出；即使没有被系结至某以名称，也可以存在。
+
+   定义单例对象并不会定义类型（在 Scala 的抽象层级上是这样）。
+
+   类和单例对象的一个区别是单例对象不能接收参数，而类可以。每个单例对象都是通过一个静态变量引用合成类（synthetic class）的实例来实现的，因此单例对象从初始化的语义上跟 Java 的静态成员是一致的。尤其体现在，单例对象在有代码访问时才被初始化。
+
+   没有同名的伴生类的单例对象称为孤立对象（standalone object）。
+** Scala 应用程序
+   要运行一个 Scala 程序，必须提供一个独立对象的名称。这个独立对象需要包含一个 main 方法，该方法接收一个 Array[String] 作为参数，结果类型为 Unit。任何带有满足正确签名的 main 方法的独立对象都能被用作应用程序的入口。
+   
+   Scala 在每一个 Scala 源码文件中都隐式地引入了 java.lang 和 scala 包的成员，以及名为 Predef 的单例对象的所有成员。
+   
+   Scala 和 Java 的区别之一，是 Java 要求你将公共的类放入跟类同名的文件中，而在 Scala 中可以任意命名 .scala 文件，不论你放什么类或代码到这个文件中。不过，通常对于那些非脚本的场景，把类放入以类名命名的文件是推荐的做法，就像 Java 那样。 
+
+** App 特质
+
+   Scala 提供了一个特质 scala.App，帮助你节省敲键盘的动作。
+   
+   #+begin_src scala
+     object summer extends App {
+       println("extend App")
+     }
 
    #+end_src
 
-  
- 
+   #+RESULTS:
+   : defined object summer
+
+   要使用这个特质，首先要在你的单例对象名后加上 "extends App"。然后，并不是直接编写 main 方法，而是将你打算放在 main 方法里的代码直接写在单例对象的花括号中。可以通过名为 args 的字符串数组来访问命令行参数。
+
+* 第五章 基础类型和操作
+
