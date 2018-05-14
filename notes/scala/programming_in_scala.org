@@ -786,6 +786,7 @@ val numName = Array("zero", "one", "two")
 
 * 第六章 函数式对象
    本章的重点是那些定义函数式对象的类，或者那些没有任何可变状态的对象。
+
    通过实现一个有理数类来进行说明。
 
 ** 构建 Rational
@@ -877,6 +878,7 @@ val numName = Array("zero", "one", "two")
    :                                                           ^
    
    这段代码编译器回报错：
+
    虽然类参数 n 和 d 在你的 add 方法的作用域内，只能访问执行 add 调用的那个对象上的 n 和 d 的值。 因此，当你在 add 实现中用到 n 和 d 时，编译器会提供这些类参数对应的值，但它并不允许使用 that.n 或 that.d，因为 that 并非指向你执行 add 调用的那个对象。要访问 that 的分子和分母，需要将他们做成字符。
 
    #+begin_src scala
@@ -928,10 +930,12 @@ val numName = Array("zero", "one", "two")
    : defined class Rational
    
    lessThan 里的的 this 可以省略只写 numer。这两种表示法是等效的。
+
    max 里第一个 this 是冗余的。但是第二个 this 是必须的。
 
 ** 辅助构造方法
    在 Scala 中， 主构造方法之外的构造方法称为辅助构造方法（auxiliary constructor）。
+
    在 Scala 中，每个辅助构造方法都必须首先调用同一个类的另一个构造方法。换句话说，Scala 每个辅助就构造方法的第一条语句都必须是这样的形式：this(...)。被调用的构造方法要么是主构造方法，要么是另一个出现在发起调用的构造方法之前的另一个辅助构造方法。这个规则的净效应是 Scala 的每个构造方法最终都会调用到该类的主构造方法。这样一来，主构造方法就是类的单一入口。
    #+begin_src scala
    class Rational(n: Int, d: Int) {
@@ -994,9 +998,13 @@ val numName = Array("zero", "one", "two")
    
 ** Scala 中的标识符
    Scala 遵循了 Java 的驼峰命名法（camel-case）命名标识符的传统。一个原因是跟 Java 保持一致，另一个原因是下划线在 Scala 代码中还有许多其他非标识符的用法。字段，方法参数，局部变量和函数的驼峰命名应该以小写字母打头，类和特质的驼峰命名应该以大写字母打头。
+
    在常量命名上， Scala 的习惯与 Java 不同。在 Scala 中，常量（constant）这个词并不意味着 val。虽然 val 在初始化之后确实不会变，但它仍然是个变量。举个例子来说，方法参数是 val，但方法每次别调用是，这些 val 都可以拿到不一样的值。而一个常量更永固。Java 对常量的命名习惯是全大写，并用下划线分隔开不同的单词，比如 MAX_VALUE 或 PI。而 Scala 的命名习惯只要求首字母大写。
+
    操作表示符（operator identifier）：略
+
    混合标识符（mixed identifier）由一个字母数字组合操作符，一个下划线和一个符号操作符组成。例如：unary_+
+
    字面标识符（literal identifier）是用反引号括起来的任意字符串。略
 
 
