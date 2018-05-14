@@ -484,4 +484,527 @@ val numName = Array("zero", "one", "two")
    要使用这个特质，首先要在你的单例对象名后加上 "extends App"。然后，并不是直接编写 main 方法，而是将你打算放在 main 方法里的代码直接写在单例对象的花括号中。可以通过名为 args 的字符串数组来访问命令行参数。
 
 * 第五章 基础类型和操作
+** 一些基础类型
+   Byte，Short，Int，Long 和 Char 类型统称为整数类型（integral type）。整数类型加上 Float 和 Double 称作数值类型（numeric types）。
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/基础类型取值区间.png]]
 
+   Scala 的基础类型跟 Java 中对应的类型取值区间完全相同，这使得 Scala 编译器可以在产出的字节码中将 Scala 的值类型（value types）转换成 Java 的基本类型（primitive type）。
+
+** 字面量
+   用于 Int，Long，Short 和 Byte 的整数字面量有两种形式：十进制的和十六进制的。如果是以 0x 或 0X 开头，意味着这是十六进制的数。如果字面量以非 0 的数字打头，且除此之外没有其他修饰，那么它就是十进制的。
+
+   如果整数字面量以 L 或 l 结尾，那么它就是 Long 型的，否则就是 Int。
+
+   如果一个 Int 型的字面量被赋值给一个类型为 Short 或 Byte 的变量，该字面量会被当作 Short 或 Byte 类型，只要这个字面量的值在对应类型的合法取值区间即可。
+
+   #+begin_src scala
+     val hex = 0x5
+     val hex2 = 0x00FF
+     val magic = 0xcafebabe
+
+     val dec1 = 31
+     val dec2 = 255
+     val dec3 = 20
+
+     val prog = 0XCAFEBABEL
+     val tower = 35L
+     val of = 311
+
+     val little: Short = 367
+     val littler: Byte = 38 
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   hex: Int = 5
+   hex2: Int = 255
+   magic: Int = -889275714
+   dec1: Int = 31
+   dec2: Int = 255
+   dec3: Int = 20
+   prog: Long = 3405691582
+   tower: Long = 35
+   of: Int = 311
+   little: Short = 367
+   littler: Byte = 38
+   #+end_example
+
+*** 浮点数字面量
+   浮点数字面量由十进制的数字，可选的小数点（decimal point），以及后续一个可选的 E 或 e 打头的指数（exponent）组成。指数部分指的是对前一部分乘以 10 的多少次方。如果浮点数字面量以 F 或 f 结尾，那它就是 Float 型的；否则它就是 Double。Double 型的浮点数字面量也可以以 D 或 d 结尾，但这是可选的。
+   
+   #+begin_src scala
+     val big = 1.2345
+     val bigger = 1.2345e1
+     val biggerStill = 123E45
+   #+end_src
+
+   #+RESULTS:
+   : big: Double = 1.2345
+   : bigger: Double = 12.345
+   : biggerStill: Double = 1.23E47
+
+  
+*** 字符字面量
+   字符字面量（character literal）由一对单引号和中间的任意 Unicode 字符组成。
+   
+   #+begin_src scala
+   val a = 'A'
+   #+end_src
+
+   #+RESULTS:
+   : a: Char = A
+
+   除了显示地给出原字符，也可以用字符的 Unicode 码来表示。具体写法是 \u 加上 Unicode 码对应的四位的十六进制数字，如：
+
+   #+begin_src scala
+   val d = '\u0041'
+   val f = '\u0044'
+   #+end_src
+
+   #+RESULTS:
+   : d: Char = A
+   : f: Char = D
+
+   事实上，这样的 Unicode 字符可以出现在 Scala 程序的任何位置。比如说，可以像这样命名一个标示符（变量）：
+   
+   #+begin_src scala
+   val B\u0041\u0044 = 1
+   #+end_src
+
+   #+RESULTS:
+   : BAD: Int = 1
+
+   通常来说，把标识符命名成这样并不好，因为不易读。这样的语法规则存在，本意上让包含非 ASCII 的 Unicode 字符的 Scala 源文件可以用 ASCII 表示。
+
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/特殊字符转义序列.png]]
+
+
+*** 字符串字面量
+   字符串字面量由双引号包起来的字符组成。
+   
+   #+begin_src scala
+   val hello = "hello"
+   val escapes = "\\\"\'"
+   #+end_src
+
+   #+RESULTS:
+   : hello: String = hello
+   : escapes: String = \"'
+
+   由于这个语法对那些包含大量转义序列或者跨多行的字符串而言比较别扭，Scala 支持一种特殊的语法来表示原声字符串（raw string）。可以用三个双引号（"""）开始并以三个双引号结束来表示原声字符串。
+   
+   #+begin_src scala
+   println("""Welcome to Ultamix 3000.
+              Type "HELP" for help.""")
+   #+end_src
+
+   #+RESULTS:
+   : Welcome to Ultamix 3000.
+   :            Type "HELP" for help.
+
+   这里的问题是字符串第二行前面的空格被包含在了字符串里！为了处理这个常见的情况，可以对字符串调用 stripMargin 方法。具体做法是在每一行开始加一个管道符号（|），然后对真个字符串调用 StripMargin：
+   
+   #+begin_src scala
+   println("""Welcome to Ultamix 3000.
+              |Type "HELP" for help.""")
+   #+end_src
+
+   #+RESULTS:
+   : Welcome to Ultamix 3000.
+   : Type "HELP" for help.
+
+*** 符号字面量
+   符号字面量（symbol literal）的写法是 'ident，其中 ident 可以是任何由字母和数字组成的标识符。这样的字面量会被映射成 scala.Symbol 这个预定义类的实例。确切地说，字面量 'cymbal 会被编译器展开成一个工厂方法的调用：Symbol("cymbal")。
+   #+begin_src scala
+     def updateRecordByName(r: Symbol, value: Any) = {
+       // 具体代码
+     }
+   #+end_src
+
+   #+RESULTS:
+   : updateRecordByName: (r: Symbol, value: Any)Unit
+
+   对于符号，你能做的不多，除了获取它的名称：
+   
+   #+begin_src scala
+     val s = 'aSymbol
+     val nm = s.name
+   #+end_src
+
+   #+RESULTS:
+   : s: Symbol = 'aSymbol
+   : nm: String = aSymbol
+
+   另一个值得注意的点是符号会被内部化。如果同样的符号字面量出现两次，这两次引用都会指向同一个 Symbol 对象。
+
+*** 布尔值字面量
+   类型 Boolean 有两个字面量，true 和 false。
+
+** 字符串插值
+   Scala 包括了一个灵活的机制来支持字符串插值，允许你在字符串字面量中嵌入表达式。
+   
+   #+begin_src scala
+   val name = "reader"
+   println(s"Hello, $name!")
+   #+end_src
+
+   #+RESULTS:
+   : name: String = reader
+   : Hello, reader!
+
+   表达式 s"Hello, $name!" 是一个被处理的（processed）字符串字面量。
+   
+   s插值器会对内嵌的每个表达式求值，对求值结果调用 toString，替换掉字面量中的那些表达式。
+
+   可以随时使用美元符（$）开始一个表达式。如果表达式包含了非标识符字符，就必须将它放在花括号中，左花括号需要紧跟美元符。例如：
+
+   #+begin_src scala
+   s"The answer is ${6 * 7}."
+   #+end_src
+
+   #+RESULTS:
+   : res73: String = The answer is 42.
+   
+   Scala 默认还提供了另外两种字符串插值器：raw 和 f。raw 字符串插值器的行为跟 s 类似，不过它并不识别字符转义序列。
+
+   #+begin_src scala
+   raw"No\\\\escape!"
+   #+end_src
+
+   #+RESULTS:
+   : res75: String = No\\\\escape!
+
+   f 字符串插值器允许你给内嵌的表达式加上 printf 风格的指令。需要将指令放在表达式后，以百分号（%）开始，使用 java.util.Formatter 中给出的语法。
+
+   #+begin_src scala
+   f"${math.Pi}%.5f"
+   #+end_src
+
+   #+RESULTS:
+   : res77: String = 3.14159
+   
+   如果不对内嵌表达式给出任何格式化指令，f 字符串插值器将默认使用 %s，其含义是用 toString 的值来替换，就像 s 字符串插值器那样。
+
+** 操作符即方法
+   Int 包含了多个重载（overloaded）的 + 方法，分别接收不同的参数类型。
+    
+   在 Scala 中，操作符并不是特殊的语法，任何方法都可以是操作符。
+
+   中缀操作符表示法意味着被调用的方法名位于对象和你想传入的参数中间。Scala 还提供了另外两种操作符表示法：前缀和后缀。跟中缀操作符表示法（操作符接收两个操作元，一个在左一个在右）不同。前缀和后缀操作符是一元的（unary）：它们只接收一个操作元。跟中缀操作符类似，这些前缀操作符也是调用方法的一种简写。不同的是，方法名称是“unary_”加上操作符。唯一能被用作前缀操作符的是 +，-，！和 ～。后缀操作符是哪些不接收参数并且调用时没有英文句点圆括号的方法。在 Scala 中，可以在方法调用时省去空的圆括号。从约定俗成的角度讲，如果方法有副作用的时候保留空的圆括号，比如 println()；而在方法没有副作用时则可以省掉这组圆括号。
+
+   #+begin_src scala
+     val sum = 1 + 2
+     val sum = 1.+(2)
+     val sum = 1 + 2L
+
+     val s = "Hello, world!"
+     s indexOf 'o'
+     s indexOf ('o', 5)
+
+     -2.0
+       (2.0).unary_-
+
+   #+end_src
+
+   #+RESULTS:
+   : sum: Int = 3
+   : sum: Int = 3
+   : sum: Long = 3
+   : s: String = Hello, world!
+   : res79: Int = 4
+   : res80: Int = 8
+   : res81: Double = -2.0
+   : res82: Double = -2.0
+
+** 算数操作
+   当左右两个操作元都是整数类型（Int，Long，Byte，Short 或 Char）时，/ 操作符只会计算出商的整数部分。
+
+** 关系和逻辑操作
+   && 和 || 跟 Java 一样是短路的（short-circuit）
+   
+   既然操作符只是方法，短路是如何做到的。通常，所有入参都会在进入方法之前被求值，但是所有 Scala 方法都有一个机制来延迟对入参的求值，或者干脆不对他们求值。这个机制叫做传名参数（by-name parameter）。
+
+** 位运算符
+   位运算方法有：按位与（&），按位或（|）和按位异或（^）。一元的位补码操作（~，unary_~方法)对操作元的每一位取反。
+
+   Scala 整数类型还提供了三个位移（shift）方法，左移（<< ）,右移（>>）和无符号右移（>>>）
+
+** 对象相等性
+   ==，！=
+   
+   这些操作际上可以被应用于所有的对象，并不仅仅是基础类型。
+   
+   #+begin_src scala
+   List(1,2,3) == List(1,2,3)
+   List(1,2,3) == List(4,5,6)
+   #+end_src
+
+   #+RESULTS:
+   : res84: Boolean = true
+   : res85: Boolean = false
+
+   还可以比较不同类型的两个对象：
+   
+   #+begin_src scala
+   1 == 1.0
+   List(1, 2, 3) == "hello"
+   #+end_src
+
+   #+RESULTS:
+   : res87: Boolean = true
+   : res88: Boolean = false
+
+   甚至可以拿对象跟 null 做比较，或者跟可能为 null 的对象做比较。不会抛出异常：
+   
+   #+begin_src scala
+   List(1, 2, 3) == null
+   null == List(1, 2, 3)
+   #+end_src
+
+   这背后的规则很简单：首先检查左侧是否为 null，如果不为 null，调用 equals 方法。
+
+   这种比较逻辑对于不同的对象，只要它们的内容一致，且 equals 方法的实现也是完全基于内容的情况下，都会交出 true 答案。
+
+   在 Java 中，可以用 == 来比较基本类型和引用类型。
+   
+   对于基本类型而言 Java 的 == 比较的是值的相等性，就跟 Scala 一样。
+
+   但是对于引用类型，Java 的 == 比较的是引用相等性（reference equality），意思是两个变量指向 JVM 的堆上的同一个对象。Scala 也提供了用于比较引用相等性的机制，即名为 eq 的方法。
+
+** 操作符优先级和结合性
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/操作符优先级.png]]
+
+** 富包装类
+   每一个基础类型都有一个对应的富包装类，提供了额外的方法。
+   
+   #+ATTR_ORG: :width 500
+   [[file:../../static/img/scala/富包装类.png]]
+
+
+* 第六章 函数式对象
+   本章的重点是那些定义函数式对象的类，或者那些没有任何可变状态的对象。
+   通过实现一个有理数类来进行说明。
+
+** 构建 Rational
+   
+   #+begin_src scala
+   class Rational(n: Int, d: Int)
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+
+   如果一个类没有定义体，并不需要给出空的花括号（只要你想，当然也可以）。类名 Rational 后的圆括号中的标识 n 和 d 称作类参数（class parameter）。Scala 编译器将会采集到这两个类参数，并且创建一个主构造方法（primary constructor），接收同样的这两个参数。
+
+   Scala 编译器会将你在类定义体中给出的非字段或方法定义的代码编译进类的主构造方法中。
+   
+   #+begin_src scala
+   class Rational(n:Int, d: Int) {
+     println("Created " + n + "/" + d)
+   }
+   new Rational(1, 2)
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+   : Created 1/2
+   : res92: Rational = Rational@6519cd8a
+
+   跟可变对象相比，不可变对象具有若干优势和一个潜在的劣势。首先，不可变对象通常比可变对象更容易推理。其次，可以相当自由地传递不可变对象，而对于可变对象，在传递给其他代码之前，你可能需要对它们做保护式的拷贝。再次，假如有两个并发的线程同时访问某个不可变对象，它们没有机会在对象正确构造以后破坏其状态，因为没有线程可以改变某个不可变对象的状态。最后，不可变对象可以安全地用作哈希表里的键。
+
+   不可变对象的主要劣势是它们有时候会需要拷贝一个大的对象图，而实际上也许一个局部的更新也能满足要求。在某些场景下，不可变对象可能用起来比较别扭，同时还带来性能瓶颈。因此，类库对于不可变的类也提供可变的版本这样的做法并不罕见。例如： StringBuilder 类就是对不可变的 String 类的一个可变的替代。
+
+** 重新实现 toString 方法
+   解释器是通过对 Rational 对象调用 toString 来获取到这个看上去有点奇怪的字符串的。Rational 类默认继承了 java.lang.Object 类的 toString 实现。可以通过给 Rational 类添加 toString 方法来重写（override）默认的实现。
+   
+   #+begin_src scala
+   class Rational(n: Int, d: Int) {
+     override def toString = n + "/" + d
+   }
+   new Rational(1, 2)
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+   : a: Rational = 1/2
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evaluWzmTQ:17: error: value n is not a member of Rational
+   :        a.n
+   :          ^
+
+** 检查前置条件
+   面向对象编程的一个好处是可以将数据封装在对象里，以确保整个生命周期中数据都是合法的。对于 Rational 这样的不可变对象而言，这意味着需要确保对象在构造时数据合法。由于对 Rational 数来说分母为 0 是非法的状态，当 0 作为参数 d 传入的时候，不应该允许这样的 Rational 被创建出来。
+
+   解决这个问题的最佳方式是对主构造方法定义一个前置条件（precondition），d 必须为非 0 值。前置条件是对传入方法或构造方法的值的约束，这是方法调用者必须满足的。实现这个的一种方式是用 require。
+
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       require(d != 0)
+       override def toString = n + "/" + d
+     }
+     new Rational(1,2)
+     new Rational(5,0)
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+   : res96: Rational = 1/2
+   : java.lang.IllegalArgumentException: requirement failed
+   :   at scala.Predef$.require(Predef.scala:212)
+   :   ... 60 elided
+
+** 添加字段
+   #+begin_src scala
+     class Rational(n: Int, b: Int) {
+       require(d != 0)
+       override def toString = n + "/" + d
+       def add(r: Rational): Rational =
+         new Rational(n * r.d + r.n * d, d * r.d)
+     }
+   #+end_src
+
+   #+RESULTS:
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalGh7WdJ:21: error: value d is not a member of Rational
+   :            new Rational(n * that.d + that.n * d, d * that.d)
+   :                                  ^
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalGh7WdJ:21: error: value n is not a member of Rational
+   :            new Rational(n * that.d + that.n * d, d * that.d)
+   :                                           ^
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalGh7WdJ:21: error: value d is not a member of Rational
+   :            new Rational(n * that.d + that.n * d, d * that.d)
+   :                                                           ^
+   
+   这段代码编译器回报错：
+   虽然类参数 n 和 d 在你的 add 方法的作用域内，只能访问执行 add 调用的那个对象上的 n 和 d 的值。 因此，当你在 add 实现中用到 n 和 d 时，编译器会提供这些类参数对应的值，但它并不允许使用 that.n 或 that.d，因为 that 并非指向你执行 add 调用的那个对象。要访问 that 的分子和分母，需要将他们做成字符。
+
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       override def toString = n + "/" + d
+     }
+     val r = new Rational(1, 2)
+     r.n
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+   : r: Rational = 1/2
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evaltF9HIU:17: error: value n is not a member of Rational
+   :        r.n
+   :          ^
+
+   可以看出 n 和 d 并不是字段，只是类参数，所以不能使用 that.n 或 that.d 来访问。
+   
+   下面这个版本能够编译通过。
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       require(d != 0)
+       val numer: Int = n
+       val denom: Int = d
+       override def toString = numer + "/" + denom
+       def add(that: Rational): Rational = new Rational(numer * that.denom + that.numer *  denom, denom * that.denom)
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+
+** 自引用
+   关键字 this 指向当前执行方法的调用对象，当用在构造方法里的时候，指向被构造的对象实例。
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       require(d != 0)
+       val numer: Int = n
+       val denom: Int = d
+       override def toString = numer + "/" + denom
+       def add(that: Rational): Rational = new Rational(numer * that.denom + that.numer *  denom, denom * that.denom)
+       def lessThan(that: Rational) = this.numer * that.denom < that.numer * this.numer
+       def max(that: Rational) = if(this.lessThan(that)) that else this
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+   
+   lessThan 里的的 this 可以省略只写 numer。这两种表示法是等效的。
+   max 里第一个 this 是冗余的。但是第二个 this 是必须的。
+
+** 辅助构造方法
+   在 Scala 中， 主构造方法之外的构造方法称为辅助构造方法（auxiliary constructor）。
+   在 Scala 中，每个辅助构造方法都必须首先调用同一个类的另一个构造方法。换句话说，Scala 每个辅助就构造方法的第一条语句都必须是这样的形式：this(...)。被调用的构造方法要么是主构造方法，要么是另一个出现在发起调用的构造方法之前的另一个辅助构造方法。这个规则的净效应是 Scala 的每个构造方法最终都会调用到该类的主构造方法。这样一来，主构造方法就是类的单一入口。
+   #+begin_src scala
+   class Rational(n: Int, d: Int) {
+       require(d != 0)
+       val numer: Int = n
+       val denom: Int = d
+       def this(n: Int) = this(n, 1)  // auxiliary constructor
+       override def toString = numer + "/" + denom
+       def add(that: Rational): Rational = new Rational(numer * that.denom + that.numer *  denom, denom * that.denom)
+       def lessThan(that: Rational) = this.numer * that.denom < that.numer * this.numer
+       def max(that: Rational) = if(this.lessThan(that)) that else this
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+
+   为什么 Scala 的构造方法规则比 Java 更严格。在 Java 中，构造方法要么调用同一个类的另一个构造方法，要么直接调用超类的构造方法。而在 Scala 类中，只用主构造方法可以调用超类的构造方法。Scala 这个增强的限制实际上是一个设计的取舍，用来换取更精简的代码和跟 Java 相比更为简单的构造方法。
+
+** 私有字段和方法
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       require(d != 0)
+       private val g = gcd(n.abs, d.abs)
+       val numer: Int = n / g
+       val denom: Int = d / g
+       def this(n: Int) = this(n, 1)  // auxiliary constructor
+       override def toString = numer + "/" + denom
+       def add(that: Rational): Rational = new Rational(numer * that.denom + that.numer *  denom, denom * that.denom)
+       def lessThan(that: Rational) = this.numer * that.denom < that.numer * this.numer
+       def max(that: Rational) = if(this.lessThan(that)) that else this
+       private def gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b )
+       }
+
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+
+** 定义操作符   
+   #+begin_src scala
+     class Rational(n: Int, d: Int) {
+       require(d != 0)
+       private val g = gcd(n.abs, d.abs)
+       val numer: Int = n / g
+       val denom: Int = d / g
+       def this(n: Int) = this(n, 1)  // auxiliary constructor
+       override def toString = numer + "/" + denom
+       def + (that: Rational): Rational = new Rational(numer * that.denom + that.numer *  denom, denom * that.denom)
+       def * (that: Rational): Rational = new Rational(numer * that.numer, denom * that.numer)
+       def lessThan(that: Rational) = this.numer * that.denom < that.numer * this.numer
+       def max(that: Rational) = if(this.lessThan(that)) that else this
+       private def gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b )
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined class Rational
+
+   
+** Scala 中的标识符
+   Scala 遵循了 Java 的驼峰命名法（camel-case）命名标识符的传统。一个原因是跟 Java 保持一致，另一个原因是下划线在 Scala 代码中还有许多其他非标识符的用法。字段，方法参数，局部变量和函数的驼峰命名应该以小写字母打头，类和特质的驼峰命名应该以大写字母打头。
+   在常量命名上， Scala 的习惯与 Java 不同。在 Scala 中，常量（constant）这个词并不意味着 val。虽然 val 在初始化之后确实不会变，但它仍然是个变量。举个例子来说，方法参数是 val，但方法每次别调用是，这些 val 都可以拿到不一样的值。而一个常量更永固。Java 对常量的命名习惯是全大写，并用下划线分隔开不同的单词，比如 MAX_VALUE 或 PI。而 Scala 的命名习惯只要求首字母大写。
+   操作表示符（operator identifier）：略
+   混合标识符（mixed identifier）由一个字母数字组合操作符，一个下划线和一个符号操作符组成。例如：unary_+
+   字面标识符（literal identifier）是用反引号括起来的任意字符串。略
+
+
+** 方法重载
+   Scala 解析重载方法的过程跟 Java 很像。在每个具体的案例中，被选中的是那个最匹配入参静态类型的重载版本。
+
+** 隐式转换
+   如何写成 2 * r。解决办法：可以创建一个隐式转换（implicit conversion）。在需要时自动将整数转换成有理数。为了让隐式转换能工作，它需要在作用域内。如果你将隐士方法的定义放在 Rational 类内部，对解释器而言它是没有在作用域的。
+
+* 第七章 内建的控制结构
+  你会注意到一点，那就是 Scala 所有的控制结构都返回某种值作为结果。
