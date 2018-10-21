@@ -1335,3 +1335,406 @@ val numName = Array("zero", "one", "two")
    : makeRow: (row: Int)String
    : multiTable: ()String
 
+* 第八章 函数和闭包
+   事实上，Scala 提供了好几种 Java 中没有的方式来定义函数。除了方法（即那些以某个对象的成员形式存在的函数）之外，还有嵌套函数，函数字面量和函数值等。
+   
+** 方法
+   定义函数最常用的方式是作为某个对象的成员，这样的函数被称为方法（method）。
+
+   #+begin_src scala
+     import scala.io.Source
+
+     object LongLines {
+       def processFile(filename: String, width: Int) = {
+         val source = Source.fromFile(filename)
+         for (line <- source.getLines())
+           processLine(filename, width, line)
+       }
+
+       private def processLine(filename: String, width: Int, line: String) = {
+         if (line.length > width)
+           println(filename + ":" + line.trim)
+       }
+     }
+   #+end_src
+
+   #+RESULTS:
+   : import scala.io.Source
+   : defined object LongLines
+
+** 局部函数
+   前一节的 processFile 方法的构建展示了函数式编程风格的一个重要设计原则：程序应该被分解成许多小函数，每个函数都只做明确定义的任务。单个函数通常都很小。这种风格的好处是可以让程序员灵活地将许多构建单元组装起来，完成更复杂的任务。每个构建单元都应该足够简单，简单到能够单独理解的程度。
+
+   这种方式的一个问题是助手函数的名称会污染整个程序的命名空间。在解释器中，这并不是太大的问题，不过一旦函数被打包进可复用的类和对象当中，我们通常都希望类的使用者不要直接看到这些函数。它们离开类和对象单独存在时通常都没有什么意义，而且通常你都希望在后续采用其他方式重写该类时，保留删除助手函数的灵活性。
+
+   在 Java 中，帮助你达到此目的的主要工具是私有方法。这种私有方法的方式在 Scala 中同样有效。不过 Scala 还提供了另一种思路：可以在某个函数内部定义函数。就像局部变量一样，这样的局部函数只在包含它的代码块中可见。
+
+   #+begin_src scala
+     import scala.io.Source
+
+     object LongLines {
+       def processFile(filename: String, width: Int) = {
+         def processLine(line: String) = {
+           if (line.length > width)
+             println(filename + ":" + line.trim)
+         }
+         val source = Source.fromFile(filename)
+         for (line <- source.getLines())
+           processLine(line)
+       }
+     }
+
+   #+end_src
+
+   #+RESULTS:
+   : import scala.io.Source
+   : defined object LongLines
+
+** 一等函数
+   Scala 支持一等函数。不仅可以定义函数并调用它们，还可以用匿名的字面量来编写函数并将它们作为值（value）进行传递。
+
+   函数字面量被编译成类，并在运行时实例化成函数值（function value）。因此，函数字面量和函数值的区别在于，函数字面量存在于源码，而函数值以对象形式存在域运行时。这跟类（源码）与对象（运行时）的区别很相似。
+
+   函数值是对象，所以可以将它们存放在变量中。它们同时也是函数，所以也可以用常规的圆括号来调用它们。
+
+** 函数字面量的简写形式
+   Scala 提供了多个省去冗余信息，更简要地编写函数的方式。你需要留意这些机会，因为它们能帮助你去掉多余的代码。
+
+   一种让代码变得更简要的方式是略去参数类型声明。
+
+   #+begin_src scala
+     val someNumbers = List(-11, -10, -5, 0, 5, 10)
+     someNumbers.filter((x: Int) => x > 0)
+
+     someNumbers.filter((x) => x > 0)
+   #+end_src
+
+   #+RESULTS:
+   : someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+   : res10: List[Int] = List(5, 10)
+   : res11: List[Int] = List(5, 10)
+
+   Scala 编译器知道 x 必定是整数，因为它看到你立即用这个函数来过滤一个由整数组成的列表。这被称作目标类型（target typing），因为一个表达式的目标使用场景可以影响该表达式的类型。
+
+   另一个去除源码中无用字符的方式是省去某个靠类型推断的参数两侧的括号。 
+
+   #+begin_src scala
+     val someNumbers = List(-11, -10, -5, 0, 5, 10)
+     someNumbers.filter(x => x > 0)
+   #+end_src
+
+   #+RESULTS:
+   : someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+   : res13: List[Int] = List(5, 10)
+
+** 占位符语法
+   为了让函数字面量更加精简，还可以使用下划线作为占位符，用来表示一个或多个参数，只要满足每个参数只在函数字面量中出现一次即可。
+
+   #+begin_src scala
+     val someNumbers = List(-11, -10, -5, 0, 5, 10)
+     someNumbers.filter(_ > 0)
+   #+end_src
+
+   #+RESULTS:
+   : someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+   : res15: List[Int] = List(5, 10)
+
+   有时候当你用下划线为参数占位符时，编译器可能并没有足够多的信息来推断缺失的参数类型。这类情况下，可以用冒号来给出类型。
+   
+   #+begin_src scala
+     val f = _ + _
+
+     val f = (_: Int) + (_: Int)
+   #+end_src
+
+   #+RESULTS:
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalCnO4zp:14: error: missing parameter type for expanded function ((x$1, x$2) => x$1.$plus(x$2))
+   :        val f = _ + _
+   :                ^
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalCnO4zp:14: error: missing parameter type for expanded function ((x$1: <error>, x$2) => x$1.$plus(x$2))
+   :        val f = _ + _
+   :                    ^
+   : f: (Int, Int) => Int = <function2>
+
+   注意， _ + _ 将会展开成一个接收两个参数的函数字面量。这就是为什么只有当每个参数在函数字面量中出现不多不少正好一次的时候才能使用这样的精简写法。多个下划线意味着多个参数，而不是对单个参数的重复使用。
+
+** 部分应用的函数
+   虽然前面的例子用下划线替换掉单独的参数，也可以用下划线替换整个参数列表。
+   
+   #+begin_src scala
+     val someNumbers = List(-11, -10, -5, 0, 5, 10)   
+     someNumbers.foreach(println _)
+     someNumbers.foreach(println)
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+   -11
+   -10
+   -5
+   0
+   5
+   10
+   -11
+   -10
+   -5
+   0
+   5
+   10
+   #+end_example
+   
+   当你这样使用下划线时，实际上时在编写一个部分应用的函数（partially applied function）。在 Scala 中，当你调用某个函数，传入任何需要的参数时，你实际上是应用那个函数到这些参数上。
+   
+   部分应用的函数是一个表达式，在这个表达式中，并不给出函数需要的所有参数，而是给出部分，或者完全不给。
+   
+   #+begin_src scala
+     def sum(a: Int, b: Int, c:Int) = a + b + c
+
+     sum(1,2,3)
+
+     val a = sum _
+
+     a(1,2,3)
+     
+     a.apply(1,2,3)
+   #+end_src
+
+   #+RESULTS:
+   : sum: (a: Int, b: Int, c: Int)Int
+   : res0: Int = 6
+   : a: (Int, Int, Int) => Int = <function3>
+   : res1: Int = 6
+   : res2: Int = 6
+
+   例子背后发生的事情：名为 a 的变量指向一个函数值对象。这个函数值是一个从 Scala 编译器自动从 sum _ 这个部分应用函数表达式生成的类的实例。有编译器生成的这个类有一个接收三个参数的 apply 方法。生成的类的 apply 方法之所以接收三个参数，是因为表达式 sum _ 缺失的参数转发给 sum，然后返回结果。
+
+   这是一种将 def 变成函数值的方式。
+
+   #+begin_src scala
+     def sum(a: Int, b: Int, c: Int) = a + b + c
+     val b = sum(1, _: Int, 3)
+
+     b(2)
+   #+end_src
+
+   #+RESULTS:
+   : sum: (a: Int, b: Int, c: Int)Int
+   : b: Int => Int = <function1>
+   : res5: Int = 6
+
+   如果你要的部分应用函数表达式并不给出任何参数，比如 println _ 或 sum _，可以在需要这样一个函数的地方更加精简的表示，连下划线也不用写。这种形式只在明确需要函数的地方被允许。在那些并不需要函数的场合，尝试使用这样的形式会引发编译错误。
+   
+   #+begin_src scala
+     def sum(a: Int, b: Int, c: Int) = a + b + c
+     val c = sum
+     val d = sum _
+   #+end_src
+
+   #+RESULTS:
+   : sum: (a: Int, b: Int, c: Int)Int
+   : /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evalGbBq7f:12: error: missing argument list for method sum
+   : Unapplied methods are only converted to functions when a function type is expected.
+   : You can make this conversion explicit by writing `sum _` or `sum(_,_,_)` instead of `sum`.
+   :        val c = sum
+   :                ^
+   : d: (Int, Int, Int) => Int = <function3>
+
+   Scala 同行要求你明确指出那些你特意省去的参数，哪怕只是简单地加上 _ 就好。Scala 仅仅在明确预期函数类型的地方允许你省掉 _。
+
+** 闭包
+   
+   #+begin_src scala
+     (x: Int) => x + more
+
+   #+end_src
+   
+   more 是一个自由变量（free variable）,因为函数字面量本身并没有给 more 赋予任何含义。相反，x 是一个绑定变量（bound variable），因为它在该函数的上下文里有明确的含义：它被定义为该函数的唯一参数。
+
+   #+begin_src scala
+     var more = 1
+
+     val addMore = (x: Int) => x + more
+
+     addMore(10)
+   #+end_src
+
+   #+RESULTS:
+   : more: Int = 1
+   : addMore: Int => Int = <function1>
+   : res8: Int = 11
+
+   运行时，从这个函数字面量创建出来的函数值（对象）被称作闭包（closure）。该名称源于“捕获”其自由变量从而“闭合”该函数字面量的动作。没有自由变量的函数字面量，比如 (x: Int) => x + 1,称为闭合语（closed term），这里的语（term）指的是一段源代码。
+   
+   而运行时从任何带有自由变量的函数字面量，比如 (x: Int) => x + more，创建的函数值，按照定义，要求捕获到它的自由变量 more 的绑定。相应的函数值结果（包含指向被捕获的 more 变量的引用）就被称为闭包，因为函数值是通过闭合这个开放语（open term）的动作产生的。
+
+   这个例子带来一个问题，如果 more 在闭包创建以后被改变会发生什么？在 scala 中，答案是闭包能够看到这个改变。Scala 的闭包捕获的是变量本身，而不是变量引用的值。反过来也成立，闭包对捕获到的变量的修改也能在闭包外被看到。
+   #+begin_src scala
+     var more = 1
+     val addMore = (x: Int) => x + more
+     addMore(10)
+
+     more = 9999
+     addMore(10)
+
+
+     val someNumbers = List(-11, -10, -5, 0, 5, 10)
+     var sum = 0
+     some
+   #+end_src
+
+   #+RESULTS:
+   : more: Int = 1
+   : addMore: Int => Int = <function1>
+   : res18: Int = 11
+   : more: Int = 9999
+   : res19: Int = 10009
+   : someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+   : sum: Int = 0
+   : res21: Int = -11
+
+** 特殊的函数调用形式
+   Scala 支持重复参数，带名字的参数和缺省参数
+   
+*** 重复参数
+    Scala 允许你标识出函数的最后一个参数可以被重复。这让我们可以对函数传入一个可变长度的参数列表。要标识这样一个重复参数，需要在参数的类型之后加上一个星号（*）。
+
+    #+begin_src scala
+      def echo(args: String*) = for (arg <- args) println(arg)
+
+      val arr = Array("What's", "up", "doc?")
+      echo(arr) // error: type mismatch
+
+      echo(arr: _*)
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    echo: (args: String*)Unit
+    arr: Array[String] = Array(What's, up, doc?)
+    /var/folders/cb/bmm_ystd1rsdg076ndl8wv580000gp/T/scala-evaluEoZU5:14: error: type mismatch;
+     found   : Array[String]
+     required: String
+           echo(arr) // error: type mismatch
+                ^
+    What's
+    up
+    doc?
+    #+end_example
+*** 带名字的参数
+    #+begin_src scala
+      def speed(distance: Float, time: Float) =
+          distance / time
+    #+end_src
+
+    #+RESULTS:
+    : speed: (distance: Float, time: Float)Float
+
+*** 缺省参数值
+    #+begin_src scala
+      def printTime(out: java.io.PrintStream = Console.out) = out.println("time=" + System.currentTimeMillis())
+    #+end_src
+
+    #+RESULTS:
+    : printTime: (out: java.io.PrintStream)Unit
+
+** 尾递归
+   Scala 编译器能够执行一个重要的优化。函数体在求值过程中最后一步调用自己的函数，被称为尾递归（tail recursive）函数。Scala 能够检测到尾递归并将它替换成跳转到函数的最开始，并在跳转之前将参数更新为新的值。
+
+   这背后的意思是我们不应该回避使用递归算法来解决问题。通常，递归算法比基于循环的算法更优雅，精简。如果解决方案是尾递归的，那么我们并不需要支付任何（额外的）运行开销。
+
+   #+begin_src scala
+     def approximate(guess: Double): Double =
+       if (isGoodEnough(guess)) guess
+       else approximate(improve(guess))
+   #+end_src
+
+
+*** 跟踪尾递归函数
+    尾递归函数并不会在每次调用时构建一个新的栈桢，所有的调用都会在同一个栈桢中执行。
+    
+*** 尾递归的局限
+    两个相互递归的函数，Scala 没法优化它们。
+
+    如果最调用的是一个函数值（而不是发起调用的那个函数自己），也无法享受到尾递归优化。
+    
+    #+begin_src scala
+      def isEven(x: Int): Boolean =
+        if (x == 0) true else isOdd(x - 1)
+      def isOdd(x: Int): Boolean =
+        if (x == 0) false else isEven(x - 1)
+
+
+      val funValue = nestedFun _
+      def nestedFun(x: Int): Unit = {
+        if (x != 0) {println(x); funValue(x - 1)}
+      }
+    #+end_src
+
+    尾递归优化仅适用于某个方法或嵌套函数在最后一步操作用调用自己，并且没有经过函数值或者其他中间环节的场合。
+
+* 第九章 控制抽象
+
+** 减少代码重复
+   高阶函数（higher-order function），即那些接收函数作为参数的函数，让你有额外的机会来进一步压缩和简化代码。
+
+   高阶函数的好处之一是可以用来创建减少代码重复的控制抽象。
+    
+   #+begin_src scala
+     def filesHere = (new java.io.File(".")).listFiles
+     def filesMatching(query: String, matcher:(String, String)=>Boolean ) = {
+       for (file <- filesHere; if matcher(file.getName, query))
+       yield file
+     }
+
+     def filesEnding(query: String) =
+       /** (file: String, query: String) => fileName.endsWith(query)
+           由于 file，query 只使用了一次，所以可以直接用 _ 代替，然后由于 matcher 的入参类型明显可知，所以入参可以省略，所以得到 _.endsWith(_)
+       **/
+       filesMatching(query, _.endsWith(_))
+
+     def filesContaining(query: String) =
+       filesMatching(query, _.contains(_))
+
+     def filesRegex(query: String) =
+       filesMatching(query, _.matches(_))
+   #+end_src
+
+   #+RESULTS:
+   : filesHere: Array[java.io.File]
+   : filesMatching: (query: String, matcher: (String, String) => Boolean)Array[java.io.File]
+   : filesEnding: (query: String)Array[java.io.File]
+   : filesContaining: (query: String)Array[java.io.File]
+   : filesRegex: (query: String)Array[java.io.File]
+
+   代码利用闭包还可以更短。
+   #+begin_src scala
+     object FileMatcher {
+       private def filesHere = (new java.io.File(".")).listFiles
+       private def filesMatching(matcher: String =>Boolean ) = {
+         for (file <- filesHere; if matcher(file.getName))
+         yield file
+       }
+
+       def filesEnding(query: String) =
+         filesMatching(_.endsWith(query))
+
+       def filesContaining(query: String) =
+         filesMatching(_.contains(query))
+
+       def filesRegex(query: String) =
+         filesMatching(_.matches(query))
+     }
+   #+end_src
+
+   #+RESULTS:
+   : defined object FileMatcher
+
+** 简化调用方代码 略
+** 柯里化（currying）
+   #+begin_src scala
+
+   #+end_src
+
+
+
